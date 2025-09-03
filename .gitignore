@@ -1,0 +1,48 @@
+# ------------------
+# Python
+# ------------------
+AI-Service/__pycache__
+AI-Service/*.pyc
+AI-Service/*.pyo
+AI-Service/*.pyd
+AI-Service/env/
+AI-Service/venv/
+AI-Service/.venv/
+AI-Service/*.egg-info/
+AI-Service/*.egg
+AI-Service/.idea/
+AI-Service/*.log
+
+AI-Service/.env
+
+# 데이터 및 의존성 파일 무시
+AI-Service/data/
+AI-Service/daily_quest.txt
+
+
+
+# ------------------
+# Spring Boot / Java
+# ------------------
+Spring-Service/target/
+Spring-Service/build/
+Spring-Service/out/
+Spring-Service/*.class
+Spring-Service/*.jar
+Spring-Service/*.war
+Spring-Service/*.iml
+Spring-Service/*.log
+Spring-Service/.idea/
+Spring-Service/*.h2.db
+
+# ------------------
+# Common
+# ------------------
+.DS_Store
+*.swp
+.env
+.idea
+# ------------------
+# Docker
+# ------------------
+*.env
