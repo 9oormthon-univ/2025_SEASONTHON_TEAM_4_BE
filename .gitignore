@@ -12,12 +12,13 @@ AI-Service/*.egg-info/
 AI-Service/*.egg
 AI-Service/.idea/
 AI-Service/*.log
+AI-Service/*.iml
 
 AI-Service/.env
 
 # 데이터 및 의존성 파일 무시
-AI-Service/data/
-AI-Service/daily_quest.txt
+AI-Service/data/**
+AI-Service/prompts/**
 
 
 
@@ -34,6 +35,7 @@ Spring-Service/*.iml
 Spring-Service/*.log
 Spring-Service/.idea/
 Spring-Service/*.h2.db
+Spring-Service/*.properties
 
 # ------------------
 # Common
