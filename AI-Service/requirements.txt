@@ -1,4 +1,7 @@
-pandas
+flask
 openai
 python-dotenv
-flask
+sqlalchemy
+pymysql
+cryptography
+pymysql

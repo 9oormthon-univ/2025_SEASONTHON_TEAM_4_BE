@@ -1,7 +1,9 @@
 import json
+import os
 
 
 def load_json_data(file_path: str):
+    """JSON 파일을 로드합니다."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -11,11 +13,10 @@ def load_json_data(file_path: str):
         return {"error": f"{file_path} 파일의 JSON 형식이 올바르지 않습니다."}
 
 
-def load_text(file_path: str, default_text: str):
+def load_text(file_path: str) -> str:
+    """텍스트 파일을 로드합니다."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return default_text
-
-
+        return "데이터를 분석해 건강 관리 퀘스트를 생성해 주세요."
