@@ -9,6 +9,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
 
+import java.time.LocalDate;
+
 @Entity
 @Getter
 @Builder
@@ -53,13 +55,14 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false)
     private Sensor sensor;
 
+    @Column(name = "code", length = 10, nullable = false, unique = true)
     private String code;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
 
-
+    private LocalDate inactiveDate;
 
 
 }

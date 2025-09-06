@@ -36,8 +36,10 @@ public class MemberService {
         if (memberRepository.existsByEmail(requestDto.getEmail())) {
             throw new GeneralHandler(ErrorCode.ID_ALREADY_EXIST);
         }
+        final String code = CodeGenerator.next(10);
 
-        Member newMember = MemberMapper.toLoginEmailMember(requestDto.getEmail(), passwordEncoder.encode(requestDto.getPassword()), requestDto.getUsername(), requestDto.getBirth(), requestDto.getWeight(), requestDto.getHeight(), requestDto.getGender(), requestDto.getDiabetesType(), requestDto.getSensor());
+        Member newMember = MemberMapper.toLoginEmailMember(requestDto.getEmail(), passwordEncoder.encode(requestDto.getPassword()), requestDto.getUsername(), requestDto.getBirth(), requestDto.getWeight(), requestDto.getHeight(),
+                requestDto.getGender(), requestDto.getDiabetesType(), requestDto.getSensor(), code);
         Member savedMember = memberRepository.save(newMember);
 
         return RefreshTokenDTO.builder()
