@@ -3,6 +3,7 @@ package com.cloud.danjjang.domain.member.service;
 import com.cloud.danjjang.common.apiPayload.code.status.ErrorCode;
 import com.cloud.danjjang.common.exception.handler.GeneralHandler;
 import com.cloud.danjjang.common.jwt.LoginService;
+import com.cloud.danjjang.common.jwt.TokenDTO;
 import com.cloud.danjjang.common.jwt.TokenProvider;
 import com.cloud.danjjang.common.jwt.filter.JwtAuthenticationFilter;
 import com.cloud.danjjang.domain.member.dto.MemberSignDTO;
@@ -13,11 +14,10 @@ import com.cloud.danjjang.domain.member.repository.RefreshRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 @Service
 @RequiredArgsConstructor
 
@@ -64,6 +64,17 @@ public class MemberService {
 
         response.addHeader("Authorization", newAccessToken);
         return newRefreshToken;
+    }
+
+    @Transactional(readOnly = true)
+    public TokenDTO parentLoginByCode(String code, HttpServletResponse response) {
+        Member member = memberRepository.findByCode(code)
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.MEMBER_NOT_FOUND));
+
+        TokenDTO tokenDTO = tokenProvider.generateParentViewToken(member.getEmail(), member.getId());
+        response.addHeader("Authorization", tokenDTO.getAccessToken());
+        response.addHeader("X-Member-Id", String.valueOf(member.getId()));
+        return tokenDTO;
     }
 
 }
