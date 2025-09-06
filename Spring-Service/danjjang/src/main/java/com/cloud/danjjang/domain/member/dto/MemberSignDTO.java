@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 public class MemberSignDTO {
 
     @Getter
@@ -28,7 +30,7 @@ public class MemberSignDTO {
         String username;
 
         @NotNull
-        Long birth;
+        LocalDate birth;
 
         @NotNull
         Float weight;

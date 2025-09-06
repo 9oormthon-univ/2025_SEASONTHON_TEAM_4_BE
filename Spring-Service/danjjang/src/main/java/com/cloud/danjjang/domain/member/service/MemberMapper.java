@@ -6,9 +6,11 @@ import com.cloud.danjjang.domain.enums.Sensor;
 import com.cloud.danjjang.domain.member.dto.RefreshTokenDTO;
 import com.cloud.danjjang.domain.member.entity.Member;
 
+import java.time.LocalDate;
+
 public class MemberMapper {
 
-    public static Member toLoginEmailMember(String email, String encodedPassword, String username, Long birth,
+    public static Member toLoginEmailMember(String email, String encodedPassword, String username, LocalDate birth,
                                             Float weight, Float height, Gender gender, DiabetesType diabetesType,
                                             Sensor sensor, String code) {
         return Member.builder()

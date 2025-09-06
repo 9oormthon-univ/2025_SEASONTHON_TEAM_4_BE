@@ -5,6 +5,7 @@ import com.cloud.danjjang.domain.enums.DiabetesType;
 import com.cloud.danjjang.domain.enums.Gender;
 import com.cloud.danjjang.domain.enums.Sensor;
 import com.cloud.danjjang.domain.enums.Status;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
@@ -31,8 +32,9 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false)
     private String password;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Column(nullable = false)
-    private Long birth;
+    private LocalDate birth;
 
     @Column(nullable = false, length = 50)
     private String username;
