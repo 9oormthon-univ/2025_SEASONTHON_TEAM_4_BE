@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from app.utils.io import load_text
 from app.services.glucose import calculate_glucose_metrics, analyze_glucose
 from app.services.food import calculate_food_metrics, analyze_food
-from app.services.habit import calculate_habit_metrics, analyze_habits
+from app.services.habit import calculate_habit_metrics, analyze_habits, get_user_age
 from app.db import SessionLocal
 from app.models.logs import GlucoseLog, FoodLog
 from datetime import datetime
@@ -12,6 +12,9 @@ app = Flask(__name__)
 @app.route("/quest/glucose", methods=["GET"])
 def analyze():
     try:
+        # Query parameters
+        user_id = int(request.args.get("user_id", 1))  # 기본 user_id = 1
+        
         # Get today's date in YYYY-MM-DD format
         today = datetime.now().strftime("%Y-%m-%d")
         
@@ -20,7 +23,7 @@ def analyze():
         try:
             readings = (
                 db.query(GlucoseLog)
-                .filter(GlucoseLog.date == today)
+                .filter(GlucoseLog.user_id == user_id, GlucoseLog.date == today)
                 .order_by(GlucoseLog.time.asc())
                 .all()
             )
@@ -39,9 +42,12 @@ def analyze():
         # Calculate glucose metrics
         glucose_metrics = calculate_glucose_metrics(blood_sugar_data)
         
+        # 사용자 나이 조회
+        user_age = get_user_age(user_id)
+        
         # Load prompt and analyze
         prompt = load_text("prompts/daily_quest.txt")
-        analysis_result = analyze_glucose(glucose_metrics, prompt)
+        analysis_result = analyze_glucose(glucose_metrics, prompt, user_age)
         
         return jsonify(analysis_result)
     except Exception as e:
@@ -50,6 +56,9 @@ def analyze():
 @app.route("/quest/food", methods=["GET"])
 def food_analyze():
     try:
+        # Query parameters
+        user_id = int(request.args.get("user_id", 1))  # 기본 user_id = 1
+        
         # Get today's date in YYYY-MM-DD format
         today = datetime.now().strftime("%Y-%m-%d")
         
@@ -58,7 +67,7 @@ def food_analyze():
         try:
             foods = (
                 db.query(FoodLog)
-                .filter(FoodLog.date == today)
+                .filter(FoodLog.user_id == user_id, FoodLog.date == today)
                 .order_by(FoodLog.time.asc())
                 .all()
             )
@@ -87,9 +96,12 @@ def food_analyze():
         # Calculate food metrics
         food_metrics = calculate_food_metrics(food_log_data)
         
+        # 사용자 나이 조회
+        user_age = get_user_age(user_id)
+        
         # Load prompt and analyze
         prompt = load_text("prompts/food_quest.txt")
-        analysis_result = analyze_food(food_metrics, prompt)
+        analysis_result = analyze_food(food_metrics, prompt, user_age)
         
         return jsonify(analysis_result)
     except Exception as e:
@@ -100,14 +112,17 @@ def habit_analyze():
     """생활 습관 종합 분석 및 코칭"""
     try:
         # Query parameters
-        user_id = request.args.get("user_id", "demo_user")
+        user_id = int(request.args.get("user_id", 1))  # 기본 user_id = 1
         days = int(request.args.get("days", 7))  # 기본 7일간 분석
+        
+        # 사용자 나이 조회
+        user_age = get_user_age(user_id)
         
         # 생활 습관 지표 계산
         habit_metrics = calculate_habit_metrics(user_id, days)
         
-        # 생활 습관 분석 및 코칭
-        analysis_result = analyze_habits(habit_metrics)
+        # 생활 습관 분석 및 코칭 (나이 정보 포함)
+        analysis_result = analyze_habits(habit_metrics, user_age)
         
         return jsonify(analysis_result)
     except Exception as e:
