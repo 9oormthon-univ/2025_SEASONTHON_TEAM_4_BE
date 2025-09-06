@@ -38,6 +38,8 @@ Spring-Service/*.properties
 
 Spring-Service/danjjang/gradle/wrapper/gradle-wrapper.jar
 Spring-Service/danjjang/gradlew
+Spring-Service/danjjang/gradlew.bat
+
 
 # ------------------
 # Common
