@@ -1,120 +1,138 @@
-from dotenv import load_dotenv
-from flask import Flask, jsonify, request
-import json
-from openai import OpenAI
-import os
-
-# =========================
-# 환경 변수 로드
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key)
+from flask import Flask, request, jsonify
+from app.utils.io import load_text
+from app.services.glucose import calculate_glucose_metrics, analyze_glucose
+from app.services.food import calculate_food_metrics, analyze_food
+from app.services.habit import calculate_habit_metrics, analyze_habits, get_user_age
+from app.db import SessionLocal
+from app.models.logs import GlucoseLog, FoodLog
+from datetime import datetime
 
 app = Flask(__name__)
 
-# =========================
-# 데이터 읽기
-# =========================
-def load_json_data(file_path="data/mock.json"):
+@app.route("/quest/glucose", methods=["GET"])
+def analyze():
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {"error": f"{file_path} 파일이 존재하지 않습니다."}
-    except json.JSONDecodeError:
-        return {"error": f"{file_path} 파일의 JSON 형식이 올바르지 않습니다."}
-
-def load_prompt(file_path="daily_quest.txt"):
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return "데이터를 분석해 혈당 건강 퀘스트를 생성해 주세요."
-
-# =========================
-# 혈당 지표 계산
-# =========================
-def calculate_glucose_metrics(data):
-    """
-    data는 [{"time": "2025-09-03T08:00", "glucose": 95}, ...] 형식
-    """
-    glucose_values = [entry["glucose"] for entry in data if "glucose" in entry]
-
-    if not glucose_values:
-        return {
-            "error": "혈당 데이터가 없습니다."
-        }
-
-    avg_glucose = sum(glucose_values) / len(glucose_values)
-    max_glucose = max(glucose_values)
-    min_glucose = min(glucose_values)
-
-    # 혈당 스파이크: 이전 값 대비 30 이상 증가한 경우 카운트
-    spike_count = 0
-    for i in range(1, len(glucose_values)):
-        if glucose_values[i] - glucose_values[i-1] >= 30:
-            spike_count += 1
-
-    # 혈당 건강 지수: 예시로 평균과 스파이크 기반 간단 계산
-    health_index = max(0, 100 - (avg_glucose - 100) - (spike_count * 5))
-
-    return {
-        "average_glucose": round(avg_glucose, 2),
-        "max_glucose": max_glucose,
-        "min_glucose": min_glucose,
-        "spike_count": spike_count,
-        "health_index": round(health_index, 2)
-    }
-
-# =========================
-# OpenAI 요청
-# =========================
-def analyze_data(data, prompt_text):
-    metrics = calculate_glucose_metrics(data)
-    full_prompt = f"{prompt_text}\n\n혈당 데이터 지표:\n{json.dumps(metrics, ensure_ascii=False, indent=2)}\n\n원본 데이터:\n{json.dumps(data, ensure_ascii=False, indent=2)}"
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "너는 혈당 데이터 분석 및 맞춤 퀘스트 전문가야."},
-                {"role": "user", "content": full_prompt}
-            ]
-        )
-
-        answer_text = response.choices[0].message.content
-
-        # JSON 변환 시도
+        # Query parameters
+        user_id = int(request.args.get("user_id", 1))  # 기본 user_id = 1
+        
+        # Get today's date in YYYY-MM-DD format
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Read today's glucose readings from DB
+        db = SessionLocal()
         try:
-            result_json = json.loads(answer_text)
-        except json.JSONDecodeError:
-            result_json = {
-                "error": "GPT가 올바른 JSON을 반환하지 않았습니다.",
-                "text": answer_text
-            }
-
-        return result_json
+            readings = (
+                db.query(GlucoseLog)
+                .filter(GlucoseLog.user_id == user_id, GlucoseLog.date == today)
+                .order_by(GlucoseLog.time.asc())
+                .all()
+            )
+        finally:
+            db.close()
+        
+        cgm_readings = []
+        for r in readings:
+            iso_time = f"{r.date}T{r.time}" if r.time else f"{r.date}T00:00:00"
+            cgm_readings.append({
+                "time": iso_time,
+                "glucose_mg_dl": r.glucose_mg_dl,
+            })
+        blood_sugar_data = {"cgm_data": {"readings": cgm_readings}}
+        
+        # Calculate glucose metrics
+        glucose_metrics = calculate_glucose_metrics(blood_sugar_data)
+        
+        # 사용자 나이 조회
+        user_age = get_user_age(user_id)
+        
+        # Load prompt and analyze
+        prompt = load_text("prompts/daily_quest.txt")
+        analysis_result = analyze_glucose(glucose_metrics, prompt, user_age)
+        
+        return jsonify(analysis_result)
     except Exception as e:
-        return {"error": str(e)}
+        return jsonify({"error": str(e)}), 500
 
-# =========================
-# Flask 라우트
-# =========================
-@app.route("/analyze", methods=["GET", "POST"])
-def analyze_endpoint():
-    if request.method == "POST":
-        data = request.json or []
-    else:
-        data = load_json_data()
-        if "error" in data:
-            return jsonify({"result": data})
+@app.route("/quest/food", methods=["GET"])
+def food_analyze():
+    try:
+        # Query parameters
+        user_id = int(request.args.get("user_id", 1))  # 기본 user_id = 1
+        
+        # Get today's date in YYYY-MM-DD format
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Read today's food logs from DB
+        db = SessionLocal()
+        try:
+            foods = (
+                db.query(FoodLog)
+                .filter(FoodLog.user_id == user_id, FoodLog.date == today)
+                .order_by(FoodLog.time.asc())
+                .all()
+            )
+        finally:
+            db.close()
+        
+        # Group by meal type for today
+        food_list = []
+        for f in foods:
+            # Represent each DB row as a single-meal entry containing one item
+            food_list.append({
+                "meal": f.type,  # 아침/점심/저녁/간식/야식
+                "time": f.time or "",
+                "items": [
+                    {
+                        "name": f.name,
+                        "calories": f.calories or 0,
+                        "carbs": f.carbs or 0,
+                    }
+                ],
+            })
+        
+        # Build expected structure for today only
+        food_log_data = {"records": [{"date": today, "food": food_list}]}
+        
+        # Calculate food metrics
+        food_metrics = calculate_food_metrics(food_log_data)
+        
+        # 사용자 나이 조회
+        user_age = get_user_age(user_id)
+        
+        # Load prompt and analyze
+        prompt = load_text("prompts/food_quest.txt")
+        analysis_result = analyze_food(food_metrics, prompt, user_age)
+        
+        return jsonify(analysis_result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    prompt_text = load_prompt()
-    analysis_result = analyze_data(data, prompt_text)
-    return jsonify({"result": analysis_result})
+@app.route("/analyze", methods=["GET"])
+def habit_analyze():
+    """생활 습관 종합 분석 및 코칭"""
+    try:
+        # Query parameters
+        user_id = int(request.args.get("user_id", 1))  # 기본 user_id = 1
+        days = int(request.args.get("days", 7))  # 기본 7일간 분석
+        
+        # 사용자 나이 조회
+        user_age = get_user_age(user_id)
+        
+        # 생활 습관 지표 계산
+        habit_metrics = calculate_habit_metrics(user_id, days)
+        
+        # 생활 습관 분석 및 코칭 (나이 정보 포함)
+        analysis_result = analyze_habits(habit_metrics, user_age)
+        
+        return jsonify(analysis_result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-# =========================
-# 앱 실행
-# =========================
 if __name__ == "__main__":
+    # Initialize database tables
+    try:
+        from app.db import init_db
+        init_db()
+    except Exception as e:
+        print("DB init failed:", e)
     app.run(port=5000, debug=True)
