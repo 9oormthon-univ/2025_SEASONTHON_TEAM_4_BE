@@ -68,8 +68,6 @@ public class TokenProvider {
     public Authentication getAuthenticationFromAccessToken(String accessToken) {
         Claims claims = parseClaims(accessToken);
 
-        //System.out.println(claims + " Provider - claims");
-
         if (claims.get("auth") == null) {
             throw new GeneralHandler(ErrorCode.TOKEN_MISSING_AUTHORITY);
         }
@@ -101,6 +99,35 @@ public class TokenProvider {
             log.info("JWT 토큰이 잘못되었습니다.");
         }
         return false;
+    }
+
+    public TokenDTO generateParentViewToken(String subjectEmail, Long memberId) {
+        long now = System.currentTimeMillis();
+
+        Date accessExp = new Date(now + accessTokenExpireTime);
+
+        String accessToken = Jwts.builder()
+                .setSubject(subjectEmail)
+                .claim("auth", "ROLE_PARENT_VIEW") // 부모-뷰 권한
+                .claim("mode", "PARENT_VIEW")      // 모드 표시(선택)
+                .claim("mid", memberId)            // 조회 대상 memberId
+                .setExpiration(accessExp)
+                .signWith(key, SignatureAlgorithm.HS512)
+                .compact();
+
+        String refreshToken = Jwts.builder()
+                .setSubject(subjectEmail)
+                .claim("mode", "PARENT_VIEW")
+                .claim("mid", memberId)
+                .setExpiration(new Date(now + refreshTokenExpireTime))
+                .signWith(key, SignatureAlgorithm.HS512)
+                .compact();
+
+        return TokenDTO.builder()
+                .grantType("Bearer")
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
     private Claims parseClaims(String accessToken) {

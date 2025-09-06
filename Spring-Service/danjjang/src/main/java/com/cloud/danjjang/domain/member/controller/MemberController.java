@@ -14,10 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import static com.cloud.danjjang.common.apiPayload.code.status.SuccessCode._SIGNUP_SUCCESS;
 
@@ -57,4 +54,11 @@ public class MemberController {
         // Filter에서 작동하지만, Swagger 위해서 틀만 작성
         return ApiResponse.onSuccess(SuccessCode._OK);
     }
+
+    @Operation(summary = "부모 로그인 api")
+    @PostMapping("/auth/parent-login")
+    public ApiResponse<TokenDTO> parentLogin(@RequestParam String code, HttpServletResponse response) {
+        return ApiResponse.onSuccess(memberService.parentLoginByCode(code, response));
+    }
+
 }

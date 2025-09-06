@@ -8,7 +8,9 @@ import com.cloud.danjjang.domain.member.entity.Member;
 
 public class MemberMapper {
 
-    public static Member toLoginEmailMember(String email, String encodedPassword, String username, Long birth, Float weight, Float height, Gender gender, DiabetesType diabetesType, Sensor sensor) {
+    public static Member toLoginEmailMember(String email, String encodedPassword, String username, Long birth,
+                                            Float weight, Float height, Gender gender, DiabetesType diabetesType,
+                                            Sensor sensor, String code) {
         return Member.builder()
                 .email(email)
                 .password(encodedPassword)
@@ -19,6 +21,7 @@ public class MemberMapper {
                 .gender(gender)
                 .diabetesType(diabetesType)
                 .sensor(sensor)
+                .code(code)
                 .build();
     }
 
