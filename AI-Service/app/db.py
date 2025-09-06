@@ -24,5 +24,5 @@ Base = declarative_base()
 
 
 def init_db():
-    from app.models.logs import GlucoseLog, FoodLog, ExerciseLog  # noqa: F401 - ensure models are imported
+    from app.models.logs import User, GlucoseLog, FoodLog, ExerciseLog  # noqa: F401 - ensure models are imported
     Base.metadata.create_all(bind=engine)
