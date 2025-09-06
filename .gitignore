@@ -36,7 +36,6 @@ Spring-Service/.idea/
 Spring-Service/*.h2.db
 Spring-Service/*.properties
 
-Spring-Service/danjjang/gradle/wrapper/gradle-wrapper.jar
 Spring-Service/danjjang/gradlew
 Spring-Service/danjjang/gradlew.bat
 
