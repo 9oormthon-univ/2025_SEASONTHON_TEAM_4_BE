@@ -1,28 +1,52 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 import os
 
+# Database URL - using SQLite for simplicity
+DATABASE_URL = "sqlite:///./data/app.db"
 
-# Prefer DATABASE_URL if provided, else build from individual vars
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    MYSQL_USER = os.getenv("MYSQL_USER", "root")
-    MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
-    MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-    MYSQL_PORT = os.getenv("MYSQL_PORT", "3306")
-    MYSQL_DB = os.getenv("MYSQL_DB", "glucose")
-    # Note: password may be empty; if your MySQL requires a password, set MYSQL_PASSWORD
-    DATABASE_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
-
+# Create SQLAlchemy engine
 engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=3600,
+    DATABASE_URL, 
+    connect_args={"check_same_thread": False}  # Needed for SQLite
 )
+
+# Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create Base class for models
 Base = declarative_base()
 
-
 def init_db():
-    from app.models.logs import User, GlucoseLog, FoodLog, ExerciseLog  # noqa: F401 - ensure models are imported
+    """Initialize database tables"""
+    # Import all models here to ensure they are registered with Base
+    from app.models.database_models import User, GlucoseLog, FoodLog, ExerciseLog
+    
+    # Create all tables
     Base.metadata.create_all(bind=engine)
+    
+    # Create default user if not exists
+    db = SessionLocal()
+    try:
+        existing_user = db.query(User).filter(User.id == 1).first()
+        if not existing_user:
+            default_user = User(id=1, age=30)  # Default age 30
+            db.add(default_user)
+            db.commit()
+            print("Default user created with ID 1")
+    except Exception as e:
+        print(f"Error creating default user: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+def get_db():
+    """Dependency to get database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+

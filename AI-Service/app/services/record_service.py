@@ -4,20 +4,22 @@ from app.ai import call_openai_api
 
 def calculate_food_metrics(data):
     """
-    음식 기록 데이터를 분석하여 지표를 계산
+    음식 및 운동 기록 데이터를 분석하여 지표를 계산
     """
     if not isinstance(data, dict) or "records" not in data:
-        return {"error": "올바르지 않은 음식 기록 데이터 형식입니다."}
+        return {"error": "올바르지 않은 기록 데이터 형식입니다."}
     
     records = data["records"]
     if not records:
-        return {"error": "음식 기록 데이터가 없습니다."}
+        return {"error": "기록 데이터가 없습니다."}
     
     total_meals = 0
     total_calories = 0
     high_sugar_foods = 0
     late_night_snacks = 0
     irregular_meals = 0
+    total_exercise_minutes = 0
+    exercise_sessions = 0
     recorded_days = len(records)
     
     # 고당분 음식 키워드
@@ -61,9 +63,18 @@ def calculate_food_metrics(data):
                     if keyword in item_name:
                         high_sugar_foods += 1
                         break
+        
+        # 운동 데이터 처리
+        if "exercise" in record:
+            exercise_records = record["exercise"]
+            for exercise in exercise_records:
+                total_exercise_minutes += exercise.get("duration", 0)
+                if exercise.get("duration", 0) > 0:
+                    exercise_sessions += 1
     
     avg_calories = total_calories / recorded_days if recorded_days > 0 else 0
     record_completeness = (total_meals / (recorded_days * 3)) * 100 if recorded_days > 0 else 0
+    avg_exercise_minutes = total_exercise_minutes / recorded_days if recorded_days > 0 else 0
     
     return {
         "total_meals": total_meals,
@@ -71,93 +82,81 @@ def calculate_food_metrics(data):
         "high_sugar_foods": high_sugar_foods,
         "late_night_snacks": late_night_snacks,
         "irregular_meals": irregular_meals,
-        "record_completeness": round(record_completeness, 1)
+        "record_completeness": round(record_completeness, 1),
+        "total_exercise_minutes": total_exercise_minutes,
+        "exercise_sessions": exercise_sessions,
+        "avg_exercise_minutes": round(avg_exercise_minutes, 1)
     }
 
 
 def analyze_food(metrics, prompt_text, user_age=None):
-    """음식 데이터를 분석하여 맞춤 퀘스트를 생성"""
-    # 템플릿 변수를 실제 값으로 치환
-    formatted_prompt = prompt_text.format(
-        total_meals=metrics.get("total_meals", 0),
-        avg_calories=metrics.get("avg_calories", 0),
-        high_sugar_foods=metrics.get("high_sugar_foods", 0),
-        late_night_snacks=metrics.get("late_night_snacks", 0),
-        irregular_meals=metrics.get("irregular_meals", 0),
-        record_completeness=metrics.get("record_completeness", 0)
-    )
+    """음식 및 운동 데이터를 분석하여 맞춤 퀘스트를 생성"""
+    # 실제 수치를 프롬프트에 추가
+    total_meals = metrics.get("total_meals", 0)
+    avg_calories = metrics.get("avg_calories", 0)
+    high_sugar_foods = metrics.get("high_sugar_foods", 0)
+    late_night_snacks = metrics.get("late_night_snacks", 0)
+    irregular_meals = metrics.get("irregular_meals", 0)
+    record_completeness = metrics.get("record_completeness", 0)
+    total_exercise_minutes = metrics.get("total_exercise_minutes", 0)
+    exercise_sessions = metrics.get("exercise_sessions", 0)
+    avg_exercise_minutes = metrics.get("avg_exercise_minutes", 0)
     
-    # 나이 기반 말투 조정 - 조건문으로 판단하여 프롬프트 추가
-    if user_age is not None and user_age < 10:
-        # 어린이용 반말 프롬프트 추가
-        tone_instruction = f"""
+    # 프롬프트에 실제 데이터 추가
+    data_info = f"""
+    
+사용자 기록 데이터:
+- 총 식사 횟수: {total_meals}회
+- 평균 칼로리: {avg_calories}kcal
+- 고당분 음식: {high_sugar_foods}회
+- 야식: {late_night_snacks}회
+- 불규칙한 식사: {irregular_meals}회
+- 식사 기록 완성도: {record_completeness}%
+- 총 운동 시간: {total_exercise_minutes}분
+- 운동 세션: {exercise_sessions}회
+- 평균 운동 시간: {avg_exercise_minutes}분
 
-🚨 매우 중요: 사용자가 {user_age}세 어린이입니다! 🚨
-반드시 반말로만 말해주세요. 존댓말 절대 금지!
+위 데이터를 바탕으로 구체적인 수치를 포함한 퀘스트를 생성해주세요.
+"""
+    
+    formatted_prompt = prompt_text + data_info
+    
+    # 반말 + 다정한 말투로 통일 (나이 검증 없음)
+    tone_instruction = """
 
-✅ 사용해야 할 반말:
+🚨 매우 중요: 반말 + 다정한 말투로만 말해주세요! 🚨
+존댓말 절대 금지!
+
+✅ 사용해야 할 반말 + 다정한 말투:
 - "~해", "~야", "~지", "~어", "~네", "~자"
+- "~해보자", "~해보면 좋겠어", "~해보는 건 어때?"
 - 예시: "음식을 골고루 먹어보자!", "오늘도 맛있게 먹어!", "조금만 더 신경써!"
+- 예시: "건강한 음식 먹어보면 좋겠어!", "규칙적으로 먹어보는 건 어때?", "맛있게 지내자!"
 
 ❌ 절대 사용하면 안 되는 존댓말:
 - "~해요", "~세요", "~입니다", "~되세요" 등
 - 예시: "음식을 골고루 드셔보세요" (X), "오늘도 맛있게 드세요" (X)
 
-⚠️ 주의: 존댓말을 사용하면 안 됩니다! 반말로만 작성하세요!"""
-    else:
-        # 성인용 존댓말 프롬프트 추가
-        tone_instruction = f"""
-
-🚨 매우 중요: 사용자에게 존댓말로만 말해주세요! 🚨
-반말 절대 금지!
-
-✅ 사용해야 할 존댓말:
-- "~해요", "~세요", "~입니다", "~되세요"
-- 예시: "음식을 골고루 드셔보세요!", "오늘도 맛있게 드세요!", "조금만 더 신경써주세요!"
-
-❌ 절대 사용하면 안 되는 반말:
-- "~해", "~야", "~지", "~어", "~네" 등
-- 예시: "음식을 골고루 먹어보자" (X), "오늘도 맛있게 먹어" (X)
-
-⚠️ 주의: 반말을 사용하면 안 됩니다! 존댓말로만 작성하세요!"""
+⚠️ 주의: 존댓말을 사용하면 안 됩니다! 반말 + 다정한 말투로만 작성하세요!"""
     
-    # 나이에 따른 강제 말투 변환
-    if user_age is not None and user_age < 10:
-        # 어린이용 - 반말 강제
-        final_instruction = f"""
+    # 반말 + 다정한 말투 강제 변환
+    final_instruction = """
 
 🔥🔥🔥 최종 지시사항 🔥🔥🔥
-사용자 나이: {user_age}세 (어린이)
-반드시 반말로만 작성하세요!
+반드시 반말 + 다정한 말투로만 작성하세요!
 
 ❌ 금지: "~해요", "~세요", "~입니다", "~되세요"
-✅ 필수: "~해", "~야", "~지", "~어", "~자"
+✅ 필수: "~해", "~야", "~지", "~어", "~자", "~해보자", "~해보면 좋겠어"
 
 예시 변환:
 - "도전해보세요" → "도전해보자"
 - "드셔보세요" → "먹어보자"  
 - "해보세요" → "해보자"
 - "걸어보세요" → "걸어보자"
+- "관리해보세요" → "관리해보자"
+- "노력해보세요" → "노력해보자"
 
-모든 문장을 반말로 변환하여 작성하세요!"""
-    else:
-        # 성인용 - 존댓말 강제
-        final_instruction = f"""
-
-🔥🔥🔥 최종 지시사항 🔥🔥🔥
-사용자 나이: {user_age if user_age else '알 수 없음'}세 (성인)
-반드시 존댓말로만 작성하세요!
-
-❌ 금지: "~해", "~야", "~지", "~어", "~자"
-✅ 필수: "~해요", "~세요", "~입니다", "~되세요"
-
-예시 변환:
-- "도전해보자" → "도전해보세요"
-- "먹어보자" → "드셔보세요"
-- "해보자" → "해보세요"
-- "걸어보자" → "걸어보세요"
-
-모든 문장을 존댓말로 변환하여 작성하세요!"""
+모든 문장을 반말 + 다정한 말투로 변환하여 작성하세요!"""
     
     full_prompt = f"{formatted_prompt}{tone_instruction}\n\n음식 기록 데이터 지표:\n{json.dumps(metrics, ensure_ascii=False, indent=2)}\n\n{final_instruction}"
     

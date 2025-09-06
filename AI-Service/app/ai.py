@@ -4,7 +4,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key)
+
+# OpenAI 클라이언트 초기화 (httpx 호환성 문제 해결)
+try:
+    client = OpenAI(api_key=api_key)
+except TypeError:
+    # httpx 버전 호환성 문제로 인한 fallback
+    import httpx
+    client = OpenAI(
+        api_key=api_key,
+        http_client=httpx.Client()
+    )
 
 
 def call_openai_api(prompt: str, system_prompt: str = "You are a helpful assistant.") -> str:
