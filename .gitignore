@@ -19,6 +19,8 @@ AI-Service/.env
 # 데이터 및 의존성 파일 무시
 AI-Service/prompts/**
 AI-Service/config.py
+AI-Service/app/db.py
+AI-Service/app/__pycache__
 
 
 
