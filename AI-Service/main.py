@@ -4,7 +4,7 @@ from app.utils.io import load_text
 from app.services.glucose_service import calculate_glucose_metrics, analyze_glucose
 from app.services.record_service import calculate_food_metrics, analyze_food
 from app.db import SessionLocal
-from app.models.database_models import GlucoseLog, FoodLog, ExerciseLog, Member
+from app.models.database_models import GlucoseLog, FoodLog, ExerciseLog, Member, Quest
 from config import config
 from datetime import datetime
 import random
@@ -247,7 +247,7 @@ def select_daily_quests(glucose_quests_dict, record_quests_dict, date_str, count
 
 @app.route("/quest", methods=["GET"])
 def combined_quest():
-    """혈당 퀘스트와 기록 퀘스트를 통합하여 총 4개 퀘스트 반환"""
+    """혈당 퀘스트와 기록 퀘스트를 통합하여 총 4개 퀘스트 반환 (해당 날짜에 한 번만 생성)"""
     try:
         # Query parameters
         member_id = int(request.args.get("member_id", 1))
@@ -257,6 +257,16 @@ def combined_quest():
         member_info = get_member_info(member_id)
         if not member_info:
             return jsonify({"error": "회원을 찾을 수 없습니다."}), 404
+        
+        # 해당 날짜에 이미 퀘스트가 있는지 확인
+        existing_quests = get_quests_by_date(member_id, today)
+        if "error" not in existing_quests and existing_quests.get("count", 0) > 0:
+            # 기존 퀘스트가 있으면 기존 퀘스트를 반환
+            quest_list = existing_quests.get("quests", [])
+            result = {}
+            for quest in quest_list:
+                result[quest["quest_title"]] = quest["quest_content"]
+            return jsonify({"result": result})
         
         # 혈당 데이터 기반 퀘스트 풀 생성
         glucose_readings = get_today_glucose_data(member_id, today)
@@ -289,11 +299,80 @@ def combined_quest():
         
         result = select_daily_quests(glucose_quest_pool, record_quest_pool, today, count=4)
         
+        # 퀘스트를 데이터베이스에 저장
+        save_quests_to_db(member_id, result, today)
+        
         return jsonify({"result": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
+def save_quests_to_db(member_id, quests, date_str):
+    """퀘스트를 데이터베이스에 저장"""
+    try:
+        db = SessionLocal()
+        
+        # 기존 퀘스트가 있는지 확인
+        existing_quests = db.query(Quest).filter(
+            Quest.member_id == member_id,
+            Quest.quest_date == date_str
+        ).all()
+        
+        # 기존 퀘스트가 있으면 삭제
+        if existing_quests:
+            for quest in existing_quests:
+                db.delete(quest)
+            db.commit()
+        
+        # 새 퀘스트 저장
+        for title, content in quests.items():
+            quest_type = "GLUCOSE" if "혈당" in title else "RECORD"
+            
+            quest = Quest(
+                member_id=member_id,
+                quest_type=quest_type,
+                quest_title=title,
+                quest_content=content,
+                quest_date=date_str
+            )
+            db.add(quest)
+        
+        db.commit()
+        print(f"퀘스트 저장 완료: {len(quests)}개")
+        
+    except Exception as e:
+        print(f"퀘스트 저장 오류: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def get_quests_by_date(member_id, date_str):
+    """특정 날짜의 퀘스트 조회"""
+    try:
+        db = SessionLocal()
+        
+        quests = db.query(Quest).filter(
+            Quest.member_id == member_id,
+            Quest.quest_date == date_str
+        ).order_by(Quest.created_at.asc()).all()
+        
+        result = []
+        for quest in quests:
+            quest_data = {
+                "quest_title": quest.quest_title,
+                "quest_content": quest.quest_content,
+                "is_completed": quest.is_completed,
+                "approval_status": quest.approval_status
+            }
+            result.append(quest_data)
+        
+        return {"quests": result, "date": date_str}
+        
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        db.close()
 
 
 def format_analyze_prompt(prompt, avg_glucose, max_glucose, min_glucose, spike_count, measurement_count):
@@ -384,6 +463,115 @@ def glucose_analyze():
         return jsonify(analysis_result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/quest/list", methods=["GET"])
+def get_quests_api():
+    """날짜별 퀘스트 조회 API"""
+    try:
+        member_id = int(request.args.get("member_id", 1))
+        date_str = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
+        
+        result = get_quests_by_date(member_id, date_str)
+        
+        if "error" in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/quest/complete", methods=["POST"])
+def complete_quest_api():
+    """퀘스트 완료 API"""
+    try:
+        data = request.get_json()
+        quest_id = data.get("quest_id")
+        member_id = data.get("member_id")
+        
+        if not quest_id or not member_id:
+            return jsonify({"error": "quest_id와 member_id가 필요합니다."}), 400
+        
+        db = SessionLocal()
+        try:
+            # 퀘스트 조회
+            quest = db.query(Quest).filter(
+                Quest.id == quest_id,
+                Quest.member_id == member_id
+            ).first()
+            
+            if not quest:
+                return jsonify({"error": "퀘스트를 찾을 수 없습니다."}), 404
+            
+            # 이미 완료된 퀘스트인지 확인
+            if quest.is_completed:
+                return jsonify({"error": "이미 완료된 퀘스트입니다."}), 400
+            
+            # 퀘스트 완료 처리 (자동으로 승인 요청 상태로 변경)
+            quest.is_completed = True
+            quest.approval_status = '요청 중'  # 완료 시 자동으로 승인 요청 상태
+            quest.updated_at = datetime.now()
+            
+            db.commit()
+            
+            return jsonify({"message": "퀘스트가 완료되었습니다. 승인 요청이 전송되었습니다.", "quest_id": quest_id})
+            
+        except Exception as e:
+            db.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            db.close()
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/quest/approve", methods=["POST"])
+def approve_quest_api():
+    """퀘스트 승인 완료 API (관리자가 승인 완료 버튼을 누를 때)"""
+    try:
+        data = request.get_json()
+        quest_id = data.get("quest_id")
+        member_id = data.get("member_id")
+        
+        if not quest_id or not member_id:
+            return jsonify({"error": "quest_id와 member_id가 필요합니다."}), 400
+        
+        db = SessionLocal()
+        try:
+            # 퀘스트 조회
+            quest = db.query(Quest).filter(
+                Quest.id == quest_id,
+                Quest.member_id == member_id
+            ).first()
+            
+            if not quest:
+                return jsonify({"error": "퀘스트를 찾을 수 없습니다."}), 404
+            
+            # 승인 요청 중인 퀘스트인지 확인
+            if quest.approval_status != '요청 중':
+                return jsonify({"error": "승인 요청 중인 퀘스트가 아닙니다."}), 400
+            
+            # 퀘스트 승인 완료 처리 (달성 완료 상태로 변경)
+            quest.approval_status = '달성 완료'
+            quest.updated_at = datetime.now()
+            
+            db.commit()
+            
+            return jsonify({"message": "퀘스트가 승인 완료되었습니다.", "quest_id": quest_id})
+            
+        except Exception as e:
+            db.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            db.close()
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
 
 if __name__ == "__main__":
     # 데이터베이스 초기화
