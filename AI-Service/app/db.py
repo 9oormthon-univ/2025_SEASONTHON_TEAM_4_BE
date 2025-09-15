@@ -18,7 +18,7 @@ Base = declarative_base()
 def init_db():
     """Initialize database tables"""
     # Import all models here to ensure they are registered with Base
-    from app.models.database_models import Member, GlucoseLog, FoodLog, ExerciseLog
+    from app.models.database_models import Member, GlucoseLog, FoodLog, ExerciseLog, Quest
     
     # Create all tables
     Base.metadata.create_all(bind=engine)

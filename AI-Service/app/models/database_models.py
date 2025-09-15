@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Float, TIMESTAMP, ForeignKey, BigInteger, Enum, Date
+from sqlalchemy import Column, Integer, String, DateTime, Text, Float, TIMESTAMP, ForeignKey, BigInteger, Enum, Date, Boolean
 from sqlalchemy.sql import func
 from app.db import Base
 
@@ -60,3 +60,20 @@ class ExerciseLog(Base):
     exercise_date = Column(String(10), nullable=False)  # YYYY-MM-DD format
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class Quest(Base):
+    __tablename__ = "quest"
+
+    id = Column(Integer, primary_key=True, index=True)
+    member_id = Column(BigInteger, ForeignKey("member.member_id"), nullable=False, index=True)
+    quest_type = Column(Enum('GLUCOSE', 'RECORD', name='quest_type'), nullable=False)
+    quest_title = Column(String(255), nullable=False)
+    quest_content = Column(Text, nullable=False)
+    quest_date = Column(String(10), nullable=False)  # YYYY-MM-DD 형식
+    is_completed = Column(Boolean, default=False, nullable=False)
+    approval_status = Column(Enum('요청하기', '요청 중', '달성 완료', name='approval_status'), default='요청하기', nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
