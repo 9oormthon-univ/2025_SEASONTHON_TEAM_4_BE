@@ -20,7 +20,10 @@ AI-Service/.env
 AI-Service/prompts/**
 AI-Service/config.py
 AI-Service/app/db.py
-AI-Service/app/__pycache__
+__pycache__/
+**/__pycache__/
+AI-Service/app/__pycache__/
+
 
 
 
