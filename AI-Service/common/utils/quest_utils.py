@@ -2,9 +2,9 @@
 
 import json
 import random
-from app.ai import call_openai_api
-from app.utils.io import load_text
-from app.services.glucose_service import calculate_glucose_metrics
+from common.ai import call_openai_api
+from common.utils.io import load_text
+from common.services.glucose_service import calculate_glucose_metrics
 
 
 def generate_llm_quests(glucose_metrics, member_info=None):

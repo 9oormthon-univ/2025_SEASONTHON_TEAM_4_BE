@@ -1,7 +1,7 @@
 """데이터베이스 관련 유틸리티 함수들"""
 
-from app.db import SessionLocal
-from app.models.database_models import Member, GlucoseLog, Quest
+from common.db import SessionLocal
+from common.models.database_models import Member, GlucoseLog, Quest
 from datetime import datetime
 
 

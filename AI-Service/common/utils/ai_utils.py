@@ -2,8 +2,8 @@
 
 import json
 import re
-from app.ai import call_openai_api
-from app.utils.io import load_text
+from common.ai import call_openai_api
+from common.utils.io import load_text
 
 
 def format_analyze_prompt(prompt, avg_glucose, max_glucose, min_glucose, spike_count, measurement_count):
