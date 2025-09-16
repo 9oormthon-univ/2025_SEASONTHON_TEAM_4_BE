@@ -4,8 +4,11 @@ import com.cloud.danjjang.common.apiPayload.ApiResponse;
 import com.cloud.danjjang.common.apiPayload.code.status.SuccessCode;
 import com.cloud.danjjang.common.jwt.LoginService;
 import com.cloud.danjjang.common.jwt.TokenDTO;
+import com.cloud.danjjang.domain.member.annotation.AuthUser;
+import com.cloud.danjjang.domain.member.dto.MemberResponseDTO;
 import com.cloud.danjjang.domain.member.dto.MemberSignDTO;
 import com.cloud.danjjang.domain.member.dto.RefreshTokenDTO;
+import com.cloud.danjjang.domain.member.entity.Member;
 import com.cloud.danjjang.domain.member.service.MemberMapper;
 import com.cloud.danjjang.domain.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,4 +64,9 @@ public class MemberController {
         return ApiResponse.onSuccess(memberService.parentLoginByCode(code, response));
     }
 
+    @Operation(summary = "마이페이지 api")
+    @GetMapping("/my-page")
+    public ApiResponse<MemberResponseDTO.MyPageResponseDTO> myPage(@AuthUser Member member){
+        return ApiResponse.onSuccess(memberService.getMemberprofile(member));
+    }
 }
