@@ -22,9 +22,9 @@ AI-Service/config.py
 AI-Service/app/db.py
 
 
+__pycache__/
 
-echo "__pycache__/" >> AI-Service/.gitignore
-git add AI-Service/.gitignore
+
 
 
 
