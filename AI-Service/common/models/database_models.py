@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, Float, TIMESTAMP, ForeignKey, BigInteger, Enum, Date, Boolean
 from sqlalchemy.sql import func
-from app.db import Base
+from common.db import Base
 
 
 class Member(Base):
