@@ -6,6 +6,7 @@ import com.cloud.danjjang.common.jwt.LoginService;
 import com.cloud.danjjang.common.jwt.TokenDTO;
 import com.cloud.danjjang.common.jwt.TokenProvider;
 import com.cloud.danjjang.common.jwt.filter.JwtAuthenticationFilter;
+import com.cloud.danjjang.domain.member.dto.MemberResponseDTO;
 import com.cloud.danjjang.domain.member.dto.MemberSignDTO;
 import com.cloud.danjjang.domain.member.dto.RefreshTokenDTO;
 import com.cloud.danjjang.domain.member.entity.Member;
@@ -75,6 +76,15 @@ public class MemberService {
         response.addHeader("Authorization", tokenDTO.getAccessToken());
         response.addHeader("X-Member-Id", String.valueOf(member.getId()));
         return tokenDTO;
+    }
+
+    public MemberResponseDTO.MyPageResponseDTO getMemberprofile(Member member) {
+        return MemberResponseDTO.MyPageResponseDTO.builder()
+                .username(member.getUsername())
+                .height(member.getHeight())
+                .weight(member.getWeight())
+                .sensor(member.getSensor())
+                .build();
     }
 
 }
