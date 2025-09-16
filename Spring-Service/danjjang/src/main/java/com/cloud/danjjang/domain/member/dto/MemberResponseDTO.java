@@ -21,4 +21,10 @@ public class MemberResponseDTO {
 
         private Sensor sensor;
     }
+
+    @Getter
+    @Builder
+    public static class MemberSettingDTO {
+        Long memberId;
+    }
 }
