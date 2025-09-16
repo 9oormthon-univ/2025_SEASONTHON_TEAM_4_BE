@@ -6,6 +6,7 @@ import com.cloud.danjjang.common.jwt.LoginService;
 import com.cloud.danjjang.common.jwt.TokenDTO;
 import com.cloud.danjjang.common.jwt.TokenProvider;
 import com.cloud.danjjang.common.jwt.filter.JwtAuthenticationFilter;
+import com.cloud.danjjang.domain.member.dto.MemberRequestDTO;
 import com.cloud.danjjang.domain.member.dto.MemberResponseDTO;
 import com.cloud.danjjang.domain.member.dto.MemberSignDTO;
 import com.cloud.danjjang.domain.member.dto.RefreshTokenDTO;
@@ -18,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -84,6 +87,20 @@ public class MemberService {
                 .height(member.getHeight())
                 .weight(member.getWeight())
                 .sensor(member.getSensor())
+                .build();
+    }
+
+    public MemberResponseDTO.MemberSettingDTO profileSetting(Member member, MemberRequestDTO.MemberProfileDTO memberProfileDTO) {
+        member.updateMember(
+                memberProfileDTO.getUsername(),
+                memberProfileDTO.getBirth(),
+                memberProfileDTO.getGender(),
+                memberProfileDTO.getHeight(),
+                memberProfileDTO.getWeight());
+        memberRepository.save(member);
+
+        return MemberResponseDTO.MemberSettingDTO.builder()
+                .memberId(member.getId())
                 .build();
     }
 

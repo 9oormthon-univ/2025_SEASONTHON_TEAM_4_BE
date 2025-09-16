@@ -66,5 +66,10 @@ public class Member extends BaseTimeEntity {
 
     private LocalDate inactiveDate;
 
-
+    public void updateMember(String username, LocalDate birth, Gender gender, Float height, Float weight) {
+        this.username = username;
+        this.birth = birth;
+        this.gender = gender;
+        this.height = height;
+    }
 }

@@ -5,6 +5,7 @@ import com.cloud.danjjang.common.apiPayload.code.status.SuccessCode;
 import com.cloud.danjjang.common.jwt.LoginService;
 import com.cloud.danjjang.common.jwt.TokenDTO;
 import com.cloud.danjjang.domain.member.annotation.AuthUser;
+import com.cloud.danjjang.domain.member.dto.MemberRequestDTO;
 import com.cloud.danjjang.domain.member.dto.MemberResponseDTO;
 import com.cloud.danjjang.domain.member.dto.MemberSignDTO;
 import com.cloud.danjjang.domain.member.dto.RefreshTokenDTO;
@@ -64,9 +65,15 @@ public class MemberController {
         return ApiResponse.onSuccess(memberService.parentLoginByCode(code, response));
     }
 
-    @Operation(summary = "마이페이지 api")
+    @Operation(summary = "마이페이지 조회 api")
     @GetMapping("/my-page")
     public ApiResponse<MemberResponseDTO.MyPageResponseDTO> myPage(@AuthUser Member member){
         return ApiResponse.onSuccess(memberService.getMemberprofile(member));
+    }
+
+    @Operation(summary = "이름, 생년월일, 성별, 키, 몸무게 바꾸기")
+    @PostMapping("/setting")
+    public ApiResponse<MemberResponseDTO.MemberSettingDTO> profileSetting(@AuthUser Member member, @Valid @RequestBody MemberRequestDTO.MemberProfileDTO requestDto){
+        return ApiResponse.onSuccess(memberService.profileSetting(member, requestDto));
     }
 }
