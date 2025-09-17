@@ -6,6 +6,7 @@ import com.cloud.danjjang.domain.enums.Gender;
 import com.cloud.danjjang.domain.enums.Sensor;
 import com.cloud.danjjang.domain.enums.Status;
 import com.cloud.danjjang.domain.exercise.entity.Exercise;
+import com.cloud.danjjang.domain.parent.entity.Parent;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -79,4 +80,5 @@ public class Member extends BaseTimeEntity {
 
     @OneToMany(mappedBy = "member", orphanRemoval = true)
     private List<Exercise> exercises = new ArrayList<>();
+
 }

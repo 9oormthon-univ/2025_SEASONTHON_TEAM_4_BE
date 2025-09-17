@@ -34,4 +34,5 @@ public class ExerciseRequestDTO {
         @NotNull
         private ExerciseType exerciseType;
     }
+
 }

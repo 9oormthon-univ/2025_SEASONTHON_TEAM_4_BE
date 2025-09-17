@@ -55,5 +55,13 @@ public class MemberSignDTO {
         String email;
         String password;
     }
+
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ParentLoginDTO {
+        String code;
+        String name;
+    }
 }
 
