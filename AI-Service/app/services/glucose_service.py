@@ -1,5 +1,5 @@
 import json
-from common.ai import call_openai_api
+from app.core.ai import call_openai_api
 
 
 def calculate_glucose_metrics(data):

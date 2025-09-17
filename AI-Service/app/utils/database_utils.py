@@ -1,7 +1,7 @@
 """데이터베이스 관련 유틸리티 함수들"""
 
-from common.db import SessionLocal
-from common.models.database_models import Member, GlucoseLog, Quest
+from app.db.database import SessionLocal
+from app.models.database_models import Member, Glucose, Quest
 from datetime import datetime
 
 
@@ -35,9 +35,9 @@ def get_glucose_data(member_id: int, date: str):
     db = SessionLocal()
     try:
         readings = (
-            db.query(GlucoseLog)
-            .filter(GlucoseLog.member_id == member_id, GlucoseLog.date == date)
-            .order_by(GlucoseLog.time.asc())
+            db.query(Glucose)
+            .filter(Glucose.member_id == member_id, Glucose.date == date)
+            .order_by(Glucose.time.asc())
             .all()
         )
         return readings
@@ -50,13 +50,13 @@ def get_weekly_glucose_data(member_id: int, start_date: str, end_date: str):
     db = SessionLocal()
     try:
         readings = (
-            db.query(GlucoseLog)
+            db.query(Glucose)
             .filter(
-                GlucoseLog.member_id == member_id,
-                GlucoseLog.date >= start_date,
-                GlucoseLog.date <= end_date
+                Glucose.member_id == member_id,
+                Glucose.date >= start_date,
+                Glucose.date <= end_date
             )
-            .order_by(GlucoseLog.date.asc(), GlucoseLog.time.asc())
+            .order_by(Glucose.date.asc(), Glucose.time.asc())
             .all()
         )
         return readings
