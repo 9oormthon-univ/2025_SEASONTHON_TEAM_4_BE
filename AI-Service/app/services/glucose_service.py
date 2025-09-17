@@ -1,5 +1,6 @@
 import json
 from app.core.ai import call_openai_api
+from app.services.chroma_rag_service import get_chroma_rag_service
 
 
 def calculate_glucose_metrics(data):
@@ -40,8 +41,20 @@ def calculate_glucose_metrics(data):
     }
 
 
-def analyze_glucose(metrics, prompt_text, user_age=None):
-    """혈당 데이터를 분석하여 맞춤 퀘스트를 생성"""
+def analyze_glucose(metrics, prompt_text, user_age=None, member_id=None, use_rag=True, analysis_type="child"):
+    """혈당 데이터를 분석하여 맞춤 퀘스트를 생성 (Hugging Face RAG 지원)"""
+    
+    # RAG 사용 여부에 따른 분석 방식 선택
+    if use_rag and member_id:
+        try:
+            # ChromaDB RAG 기반 분석
+            rag_service = get_chroma_rag_service()
+            return rag_service.generate_rag_enhanced_analysis(metrics, member_id, analysis_type)
+        except Exception as e:
+            print(f"RAG 분석 실패, 기본 분석으로 전환: {e}")
+            # RAG 실패 시 기본 분석으로 fallback
+    
+    # 기본 분석 방식 (기존 로직)
     # 템플릿 변수를 실제 값으로 치환 (프롬프트의 (n) 형식에 맞춰)
     avg_glucose = metrics.get("average_glucose", 0)
     max_glucose = metrics.get("max_glucose", 0)

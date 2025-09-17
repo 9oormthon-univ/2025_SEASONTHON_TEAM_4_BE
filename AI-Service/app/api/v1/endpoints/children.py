@@ -83,11 +83,15 @@ def child_report_api():
         # 혈당 요약 계산
         summary = calculate_weekly_glucose_summary(glucose_data)
         
-        # LLM을 사용한 분석
+        # RAG 강화된 LLM 분석
         formatted_data = format_glucose_data(glucose_data)
         glucose_metrics = calculate_glucose_metrics(formatted_data)
         prompt_text = load_text("app/prompts/child_report_prompt.txt")
-        analysis_result = analyze_glucose(glucose_metrics, prompt_text, member_info.get('age'))
+        analysis_result = analyze_glucose(glucose_metrics, prompt_text, member_info.get('age'), member_id, use_rag=True)
+        
+        # RAG 메타데이터 추출 (내부 처리용)
+        if isinstance(analysis_result, dict) and 'rag_metadata' in analysis_result:
+            analysis_result.pop('rag_metadata')
         
         # LLM 결과에서 요약 텍스트 추출 (안전한 처리)
         summary_text = ''
