@@ -1,6 +1,6 @@
 """데이터베이스 관련 유틸리티 함수들"""
 
-from app.db.database import SessionLocal
+from .database import SessionLocal
 from app.models.database_models import Member, Glucose, Quest, Food, Exercise
 from datetime import datetime
 

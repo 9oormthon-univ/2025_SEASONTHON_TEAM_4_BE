@@ -4,8 +4,8 @@ from flask import Flask
 from flask_cors import CORS
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.db.init import init_db
-from app.utils.error_handler import handle_api_error, APIError, safe_json_response
+from app.database.init import init_db
+from app.utils.error import handle_api_error, APIError, safe_json_response
 
 # 새로운 구조의 블루프린트 import
 from app.api.v1.router import api_v1_bp

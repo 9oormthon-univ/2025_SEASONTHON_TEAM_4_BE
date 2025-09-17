@@ -1,7 +1,7 @@
 """데이터베이스 초기화"""
 
 from sqlalchemy import text
-from app.db.database import engine
+from .database import engine
 from app.models.database_models import Base
 import logging
 

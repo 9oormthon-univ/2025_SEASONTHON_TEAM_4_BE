@@ -1,19 +1,20 @@
 """아이 관련 API 엔드포인트 - 기존 구조 유지"""
 
-from flask import Blueprint, request, jsonify
-from app.utils.error_handler import (
+from flask import Blueprint, request, g, jsonify
+from app.utils.error import (
     log_request_info, safe_json_response, ValidationError, NotFoundError, DatabaseError,
-    DataIntegrityError, TimeoutError, ServiceUnavailableError, QuestError, ConflictError
+    DataIntegrityError, TimeoutError, ServiceUnavailableError, QuestError, ConflictError,
+    get_user_friendly_error, get_user_friendly_success
 )
-from app.utils.user_messages import get_user_friendly_error, get_user_friendly_success
-from app.utils.database_utils import get_member_info, get_quests_by_date, get_weekly_glucose_data
-from app.utils.glucose_utils import (
+from app.utils.auth import jwt_auth_member_id
+from app.database import get_member_info, get_quests_by_date, get_weekly_glucose_data
+from app.utils.business import (
     format_glucose_data, calculate_weekly_glucose_summary,
     get_default_date_range
 )
 from app.services.glucose_service import calculate_glucose_metrics, analyze_glucose
-from app.utils.io import load_text
-from app.db.database import SessionLocal
+from app.utils.common import load_text
+from app.database import SessionLocal
 from app.models.database_models import Quest
 from datetime import datetime
 
@@ -21,6 +22,7 @@ children_bp = Blueprint('children', __name__)
 
 
 @children_bp.route("/request", methods=["POST"])
+@jwt_auth_member_id
 @log_request_info
 def child_request_api():
     """아이 퀘스트 완료 요청 API"""
@@ -34,17 +36,18 @@ def child_request_api():
             raise ValidationError("요청 데이터가 비어있습니다")
         
         quest_id = data.get("quest_id")
-        member_id = data.get("member_id")
         
-        if not quest_id or not member_id:
-            raise ValidationError("quest_id와 member_id가 필요합니다")
+        if not quest_id:
+            raise ValidationError("quest_id가 필요합니다")
+        
+        # JWT에서 member_id 가져오기
+        member_id = g.member_id
         
         # 데이터 타입 검증
         try:
             quest_id = int(quest_id)
-            member_id = int(member_id)
         except (ValueError, TypeError):
-            raise ValidationError("quest_id와 member_id는 숫자여야 합니다")
+            raise ValidationError("quest_id는 숫자여야 합니다")
         
         with SessionLocal() as db:
             quest = db.query(Quest).filter(Quest.id == quest_id, Quest.member_id == member_id).first()
@@ -80,30 +83,20 @@ def child_request_api():
 
 
 @children_bp.route("/report", methods=["GET"])
+@jwt_auth_member_id
 @log_request_info
 def child_report_api():
     """아이를 대상으로 한 주간 혈당 분석 보고서 API"""
     try:
-        # 파라미터 검증
-        member_id_param = request.args.get("member_id")
-        if not member_id_param:
-            raise ValidationError("member_id 파라미터가 필요합니다")
-        
-        try:
-            member_id = int(member_id_param)
-        except (ValueError, TypeError):
-            raise ValidationError("member_id는 숫자여야 합니다")
+        # JWT에서 member_id 가져오기
+        member_id = g.member_id
+        member_info = g.member_info
         
         start_date = request.args.get("start_date")
         end_date = request.args.get("end_date")
         
         if not start_date or not end_date:
             start_date, end_date = get_default_date_range()
-        
-        # 회원 정보 확인
-        member_info = get_member_info(member_id)
-        if not member_info:
-            raise NotFoundError("회원을 찾을 수 없습니다")
         
         # 주간 혈당 데이터 조회
         try:

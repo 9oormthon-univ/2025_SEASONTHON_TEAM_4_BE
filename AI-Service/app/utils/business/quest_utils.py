@@ -3,7 +3,7 @@
 import json
 import random
 from app.core.ai import call_openai_api
-from app.utils.io import load_text
+from app.utils.common import load_text
 
 
 def generate_llm_quests(glucose_metrics, member_info=None, member_id=None, use_rag=False):

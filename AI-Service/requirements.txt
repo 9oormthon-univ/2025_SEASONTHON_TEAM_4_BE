@@ -13,3 +13,4 @@ faiss-cpu
 numpy
 scikit-learn
 chromadb
+PyJWT
