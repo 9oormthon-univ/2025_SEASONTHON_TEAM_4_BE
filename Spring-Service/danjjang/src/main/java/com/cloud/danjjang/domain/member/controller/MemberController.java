@@ -82,4 +82,10 @@ public class MemberController {
     public ApiResponse<MemberResponseDTO.MemberSettingDTO> sensorSetting(@AuthUser Member member, @Valid @RequestBody MemberRequestDTO.MemberSensorDTO requestDto){
         return ApiResponse.onSuccess(memberService.sensorSetting(member, requestDto));
     }
+
+    @Operation(summary = "비밀번호 변경")
+    @PostMapping("/setting/password")
+    public ApiResponse<MemberResponseDTO.MemberSettingDTO> passwordSetting(@AuthUser Member member, @Valid @RequestBody MemberRequestDTO.MemberPasswordDTO requestDto) {
+        return ApiResponse.onSuccess(memberService.passwordSetting(member, requestDto));
+    }
 }

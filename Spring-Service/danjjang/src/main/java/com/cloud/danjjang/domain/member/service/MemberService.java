@@ -113,5 +113,13 @@ public class MemberService {
                 .build();
     }
 
+    public MemberResponseDTO.MemberSettingDTO passwordSetting(Member member, MemberRequestDTO.MemberPasswordDTO memberPasswordDTO) {
+        member.setPassword(passwordEncoder.encode(memberPasswordDTO.getPassword()));
+        memberRepository.save(member);
+
+        return MemberResponseDTO.MemberSettingDTO.builder()
+                .memberId(member.getId())
+                .build();
+    }
 }
 
