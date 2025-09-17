@@ -49,11 +49,8 @@ def combined_quest():
             for quest in quest_list:
                 result[quest["quest_title"]] = quest["quest_content"]
             
-            success_msg = get_user_friendly_success("quest_generated", "오늘의 퀘스트를 조회했습니다")
             return safe_json_response({
-                "result": result,
-                "message": success_msg["message"]["message"],
-                "type": "existing"
+                "result": result
             })
         
         # 혈당 데이터 기반 퀘스트 생성
@@ -64,9 +61,9 @@ def combined_quest():
         except Exception as e:
             raise DatabaseError(f"혈당 데이터 조회 실패: {str(e)}")
         
-        # LLM을 사용하여 개인화된 퀘스트 생성
+        # 기본 LLM을 사용하여 개인화된 퀘스트 생성
         try:
-            result = generate_llm_quests(glucose_metrics, member_info)
+            result = generate_llm_quests(glucose_metrics, member_info, member_id, use_rag=False)
         except Exception as e:
             raise DatabaseError(f"퀘스트 생성 실패: {str(e)}")
         
@@ -76,11 +73,8 @@ def combined_quest():
         except Exception as e:
             raise DatabaseError(f"퀘스트 저장 실패: {str(e)}")
         
-        success_msg = get_user_friendly_success("quest_generated")
         return safe_json_response({
-            "result": result,
-            "message": success_msg["message"]["message"],
-            "type": "new"
+            "result": result
         })
         
     except ValidationError as e:
@@ -145,10 +139,8 @@ def get_quests_api():
             "remaining_count": total_count - completed_count
         }
         
-        success_msg = get_user_friendly_success("quest_generated", "퀘스트 목록을 조회했습니다")
         return safe_json_response({
-            "result": result,
-            "message": success_msg["message"]["message"]
+            "result": result
         })
         
     except ValidationError as e:
