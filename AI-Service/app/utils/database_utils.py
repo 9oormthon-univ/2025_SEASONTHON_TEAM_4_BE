@@ -1,7 +1,7 @@
 """데이터베이스 관련 유틸리티 함수들"""
 
 from app.db.database import SessionLocal
-from app.models.database_models import Member, Glucose, Quest
+from app.models.database_models import Member, Glucose, Quest, Food, Exercise
 from datetime import datetime
 
 
@@ -143,5 +143,127 @@ def get_quests_by_date(member_id, date_str):
         
     except Exception as e:
         return {"error": str(e)}
+    finally:
+        db.close()
+
+
+def get_food_data(member_id: int, date: str):
+    """음식 데이터 조회"""
+    db = SessionLocal()
+    try:
+        foods = (
+            db.query(Food)
+            .filter(Food.member_id == member_id, Food.date == date)
+            .order_by(Food.time.asc())
+            .all()
+        )
+        return foods
+    finally:
+        db.close()
+
+
+def get_exercise_data(member_id: int, date: str):
+    """운동 데이터 조회"""
+    db = SessionLocal()
+    try:
+        exercises = (
+            db.query(Exercise)
+            .filter(Exercise.member_id == member_id, Exercise.exercise_date == date)
+            .order_by(Exercise.created_at.asc())
+            .all()
+        )
+        return exercises
+    finally:
+        db.close()
+
+
+def get_food_data_by_period(member_id: int, start_date: str, end_date: str):
+    """기간별 음식 데이터 조회"""
+    db = SessionLocal()
+    try:
+        foods = (
+            db.query(Food)
+            .filter(
+                Food.member_id == member_id,
+                Food.date >= start_date,
+                Food.date <= end_date
+            )
+            .order_by(Food.date.asc(), Food.time.asc())
+            .all()
+        )
+        return foods
+    finally:
+        db.close()
+
+
+def get_exercise_data_by_period(member_id: int, start_date: str, end_date: str):
+    """기간별 운동 데이터 조회"""
+    db = SessionLocal()
+    try:
+        exercises = (
+            db.query(Exercise)
+            .filter(
+                Exercise.member_id == member_id,
+                Exercise.exercise_date >= start_date,
+                Exercise.exercise_date <= end_date
+            )
+            .order_by(Exercise.exercise_date.asc(), Exercise.created_at.asc())
+            .all()
+        )
+        return exercises
+    finally:
+        db.close()
+
+
+def get_glucose_food_correlation(member_id: int, date: str):
+    """특정 날짜의 혈당-음식 상관관계 데이터 조회"""
+    db = SessionLocal()
+    try:
+        # 해당 날짜의 모든 데이터 조회
+        glucose_data = (
+            db.query(Glucose)
+            .filter(Glucose.member_id == member_id, Glucose.date == date)
+            .order_by(Glucose.time.asc())
+            .all()
+        )
+        
+        food_data = (
+            db.query(Food)
+            .filter(Food.member_id == member_id, Food.date == date)
+            .order_by(Food.time.asc())
+            .all()
+        )
+        
+        return {
+            'glucose': glucose_data,
+            'food': food_data
+        }
+    finally:
+        db.close()
+
+
+def get_glucose_exercise_correlation(member_id: int, date: str):
+    """특정 날짜의 혈당-운동 상관관계 데이터 조회"""
+    db = SessionLocal()
+    try:
+        # 해당 날짜의 모든 데이터 조회
+        glucose_data = (
+            db.query(Glucose)
+            .filter(Glucose.member_id == member_id, Glucose.date == date)
+            .order_by(Glucose.time.asc())
+            .all()
+        )
+        
+        exercise_data = (
+            db.query(Exercise)
+            .filter(Exercise.member_id == member_id, Exercise.exercise_date == date)
+            .order_by(Exercise.created_at.asc())
+            .all()
+        )
+        
+        return {
+            'glucose': glucose_data,
+            'exercise': exercise_data
+        }
     finally:
         db.close()

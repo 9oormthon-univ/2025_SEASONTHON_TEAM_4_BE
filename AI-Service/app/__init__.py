@@ -32,19 +32,8 @@ def create_app() -> Flask:
     app.register_error_handler(APIError, handle_api_error)
     app.register_error_handler(Exception, handle_api_error)
     
-    # API 블루프린트 등록 (통합된 구조)
-    app.register_blueprint(api_v1_bp, url_prefix='/api/v1')
-    
-    # 기존 엔드포인트도 유지 (하위 호환성)
-    from app.api.v1.endpoints.health import health_bp
-    from app.api.v1.endpoints.quests import quests_bp
-    from app.api.v1.endpoints.parents import parents_bp
-    from app.api.v1.endpoints.children import children_bp
-    
-    app.register_blueprint(health_bp, url_prefix='/health')
-    app.register_blueprint(quests_bp, url_prefix='/quest')
-    app.register_blueprint(parents_bp, url_prefix='/parent')
-    app.register_blueprint(children_bp, url_prefix='/child')
+    # API 블루프린트 등록 (url_prefix 없이)
+    app.register_blueprint(api_v1_bp)
     
     # 루트 엔드포인트
     @app.route('/')

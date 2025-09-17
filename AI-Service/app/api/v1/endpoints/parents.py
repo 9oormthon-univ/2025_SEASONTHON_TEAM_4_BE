@@ -10,13 +10,20 @@ from app.utils.error_handler import (
     validate_age, validate_diabetes_type
 )
 from app.utils.user_messages import get_user_friendly_error, get_user_friendly_success
-from app.utils.database_utils import get_member_info, get_quests_by_date, get_weekly_glucose_data, get_glucose_data
+from app.utils.database_utils import (
+    get_member_info, get_quests_by_date, get_weekly_glucose_data, get_glucose_data,
+    get_food_data, get_exercise_data, get_glucose_food_correlation, get_glucose_exercise_correlation
+)
 from app.utils.glucose_utils import (
     format_glucose_data, calculate_weekly_glucose_summary,
     get_default_date_range
 )
 from app.services.glucose_service import calculate_glucose_metrics, analyze_glucose
 from app.utils.io import load_text
+from app.utils.glucose_analysis_utils import (
+    analyze_food_glucose_impact, analyze_exercise_glucose_impact, 
+    generate_daily_glucose_analysis
+)
 from app.db.database import SessionLocal
 from app.models.database_models import Quest
 from datetime import datetime
@@ -816,3 +823,127 @@ def generate_encouragement_message(summary):
         return "괜찮은 상태예요. 조금만 더 노력하면 더 좋아질 거예요! 화이팅! ✨"
     else:
         return "오늘은 조금 어려웠을 수 있어요. 하지만 포기하지 말고 함께 해봐요! 💙"
+
+
+@parents_bp.route("/glucose/correlation", methods=["GET"])
+@log_request_info
+def parent_glucose_analysis_api():
+    """일일 혈당 변화 종합 분석 API (음식 + 운동 + 혈당 통합 분석)"""
+    try:
+        # 요청 파라미터 검증
+        member_id = request.args.get("member_id")
+        if not member_id:
+            raise ValidationError("member_id는 필수 파라미터입니다.")
+        
+        try:
+            member_id = int(member_id)
+            if member_id <= 0:
+                raise ValidationError("member_id는 양수여야 합니다.")
+        except ValueError:
+            raise ValidationError("member_id는 숫자여야 합니다.")
+        
+        # 날짜는 항상 오늘로 설정
+        from datetime import datetime
+        date = datetime.now().strftime("%Y-%m-%d")
+        
+        # 회원 정보 확인
+        member_info = get_member_info(member_id)
+        if not member_info:
+            raise NotFoundError(f"회원 ID {member_id}를 찾을 수 없습니다.")
+        
+        # 해당 날짜의 모든 데이터 조회
+        try:
+            food_data = get_food_data(member_id, date)
+            exercise_data = get_exercise_data(member_id, date)
+            glucose_data = get_glucose_data(member_id, date)
+        except Exception as e:
+            raise DatabaseError(f"데이터 조회 중 오류가 발생했습니다: {str(e)}")
+        
+        # 혈당 데이터 유효성 검증
+        handle_glucose_data_error(glucose_data, member_id)
+        
+        # 음식-혈당 영향 분석
+        try:
+            food_impacts = analyze_food_glucose_impact(food_data, glucose_data)
+        except Exception as e:
+            raise DataIntegrityError(f"음식-혈당 분석 중 오류가 발생했습니다: {str(e)}")
+        
+        # 운동-혈당 영향 분석
+        try:
+            exercise_impacts = analyze_exercise_glucose_impact(exercise_data, glucose_data)
+        except Exception as e:
+            raise DataIntegrityError(f"운동-혈당 분석 중 오류가 발생했습니다: {str(e)}")
+        
+        # 요약 통계 계산
+        try:
+            # 음식 분석 통계
+            total_food_hyperglycemia = sum(impact.get('hyperglycemia_count', 0) for impact in food_impacts)
+            total_food_hypoglycemia = sum(impact.get('hypoglycemia_count', 0) for impact in food_impacts)
+            avg_food_score = sum(impact.get('glucose_score', 0) for impact in food_impacts) / len(food_impacts) if food_impacts else 0
+            
+            # 운동 분석 통계
+            avg_exercise_score = sum(impact.get('exercise_score', 0) for impact in exercise_impacts) / len(exercise_impacts) if exercise_impacts else 0
+            total_duration = sum(impact.get('duration_minutes', 0) for impact in exercise_impacts if impact.get('duration_minutes'))
+            
+            # 전체 통계
+            total_hyperglycemia = total_food_hyperglycemia
+            total_hypoglycemia = total_food_hypoglycemia
+            
+        except Exception as e:
+            raise DataIntegrityError(f"통계 계산 중 오류가 발생했습니다: {str(e)}")
+        
+        # 응답 데이터 구성
+        response_data = {
+            "date": date,
+            "member_id": member_id,
+            "member_info": {
+                "age": member_info.get('age'),
+                "diabetes_type": member_info.get('diabetes_type'),
+                "gender": member_info.get('gender'),
+                "height": member_info.get('height'),
+                "weight": member_info.get('weight')
+            },
+            "food_analysis": {
+                "impacts": food_impacts,
+                "summary": {
+                    "total_food_items": len(food_impacts),
+                    "total_hyperglycemia": total_food_hyperglycemia,
+                    "total_hypoglycemia": total_food_hypoglycemia,
+                    "average_score": round(avg_food_score, 1)
+                }
+            },
+            "exercise_analysis": {
+                "impacts": exercise_impacts,
+                "summary": {
+                    "total_exercises": len(exercise_impacts),
+                    "total_duration_minutes": total_duration,
+                    "average_score": round(avg_exercise_score, 1)
+                }
+            },
+            "overall_summary": {
+                "total_hyperglycemia": total_hyperglycemia,
+                "total_hypoglycemia": total_hypoglycemia,
+                "avg_food_score": round(avg_food_score, 1),
+                "avg_exercise_score": round(avg_exercise_score, 1),
+                "total_food_items": len(food_impacts),
+                "total_exercises": len(exercise_impacts),
+                "analysis_type": "종합 혈당 분석"
+            }
+        }
+        
+        return safe_json_response(response_data)
+        
+    except ValidationError as e:
+        return safe_json_response(get_user_friendly_error("VALIDATION_ERROR", str(e)), 400)
+    except NotFoundError as e:
+        return safe_json_response(get_user_friendly_error("NOT_FOUND", str(e)), 404)
+    except DatabaseError as e:
+        return safe_json_response(get_user_friendly_error("DATABASE_ERROR", str(e)), 500)
+    except DataIntegrityError as e:
+        return safe_json_response(get_user_friendly_error("GLUCOSE_DATA_ERROR", str(e)), 422)
+    except TimeoutError as e:
+        return safe_json_response(get_user_friendly_error("TIMEOUT_ERROR", str(e)), 408)
+    except ServiceUnavailableError as e:
+        return safe_json_response(get_user_friendly_error("SERVICE_UNAVAILABLE", str(e)), 503)
+    except Exception as e:
+        return safe_json_response(get_user_friendly_error("INTERNAL_SERVER_ERROR", str(e)), 500)
