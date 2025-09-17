@@ -76,4 +76,10 @@ public class MemberController {
     public ApiResponse<MemberResponseDTO.MemberSettingDTO> profileSetting(@AuthUser Member member, @Valid @RequestBody MemberRequestDTO.MemberProfileDTO requestDto){
         return ApiResponse.onSuccess(memberService.profileSetting(member, requestDto));
     }
+
+    @Operation(summary = "센서 설정 바꾸기")
+    @PostMapping("/setting/sensor")
+    public ApiResponse<MemberResponseDTO.MemberSettingDTO> sensorSetting(@AuthUser Member member, @Valid @RequestBody MemberRequestDTO.MemberSensorDTO requestDto){
+        return ApiResponse.onSuccess(memberService.sensorSetting(member, requestDto));
+    }
 }

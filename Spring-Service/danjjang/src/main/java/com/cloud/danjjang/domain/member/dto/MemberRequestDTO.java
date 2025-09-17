@@ -33,4 +33,13 @@ public class MemberRequestDTO {
         @NotNull
         Float height;
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MemberSensorDTO {
+        @NotNull
+        Sensor sensor;
+    }
 }
