@@ -1,7 +1,10 @@
 """퀘스트 관련 API 엔드포인트 - 기존 구조 유지"""
 
 from flask import Blueprint, request
-from app.utils.error_handler import log_request_info, safe_json_response, ValidationError, NotFoundError, DatabaseError
+from app.utils.error_handler import (
+    log_request_info, safe_json_response, ValidationError, NotFoundError, DatabaseError,
+    DataIntegrityError, TimeoutError, ServiceUnavailableError, QuestError
+)
 from app.utils.user_messages import get_user_friendly_error, get_user_friendly_success
 from app.utils.database_utils import (
     get_member_info, get_glucose_data, get_weekly_glucose_data,
@@ -56,20 +59,32 @@ def combined_quest():
         # 혈당 데이터 기반 퀘스트 생성
         try:
             glucose_readings = get_glucose_data(member_id, today)
+            if not glucose_readings:
+                raise DataIntegrityError("혈당 데이터가 없습니다")
             blood_sugar_data = format_glucose_data(glucose_readings)
             glucose_metrics = calculate_glucose_metrics(blood_sugar_data)
+        except DataIntegrityError as e:
+            raise e
         except Exception as e:
             raise DatabaseError(f"혈당 데이터 조회 실패: {str(e)}")
         
         # 기본 LLM을 사용하여 개인화된 퀘스트 생성
         try:
             result = generate_llm_quests(glucose_metrics, member_info, member_id, use_rag=False)
+            if not result or not isinstance(result, dict):
+                raise QuestError("퀘스트 생성 결과가 올바르지 않습니다")
+        except QuestError as e:
+            raise e
+        except TimeoutError as e:
+            raise TimeoutError(f"퀘스트 생성 시간 초과: {str(e)}")
         except Exception as e:
-            raise DatabaseError(f"퀘스트 생성 실패: {str(e)}")
+            raise ServiceUnavailableError(f"퀘스트 생성 서비스 오류: {str(e)}")
         
         # 퀘스트를 데이터베이스에 저장
         try:
             save_quests_to_db(member_id, result, today)
+        except DataIntegrityError as e:
+            raise DataIntegrityError(f"퀘스트 저장 데이터 오류: {str(e)}")
         except Exception as e:
             raise DatabaseError(f"퀘스트 저장 실패: {str(e)}")
         
@@ -81,6 +96,14 @@ def combined_quest():
         return safe_json_response(get_user_friendly_error("VALIDATION_ERROR", str(e)), 400)
     except NotFoundError as e:
         return safe_json_response(get_user_friendly_error("NOT_FOUND", str(e)), 404)
+    except DataIntegrityError as e:
+        return safe_json_response(get_user_friendly_error("GLUCOSE_DATA_ERROR", str(e)), 422)
+    except QuestError as e:
+        return safe_json_response(get_user_friendly_error("QUEST_ERROR", str(e)), 422)
+    except TimeoutError as e:
+        return safe_json_response(get_user_friendly_error("TIMEOUT_ERROR", str(e)), 408)
+    except ServiceUnavailableError as e:
+        return safe_json_response(get_user_friendly_error("SERVICE_UNAVAILABLE", str(e)), 503)
     except DatabaseError as e:
         return safe_json_response(get_user_friendly_error("DATABASE_ERROR", str(e)), 500)
     except Exception as e:
@@ -112,6 +135,10 @@ def get_quests_api():
         
         if "error" in result:
             raise DatabaseError(result["error"])
+        
+        # 결과 유효성 검증
+        if not isinstance(result, dict):
+            raise DataIntegrityError("퀘스트 조회 결과가 올바르지 않습니다")
         
         # LLM을 사용한 퀘스트 완료율 분석
         completion_rate = result.get("completion_rate", 0)
@@ -145,6 +172,8 @@ def get_quests_api():
         
     except ValidationError as e:
         return safe_json_response(get_user_friendly_error("VALIDATION_ERROR", str(e)), 400)
+    except DataIntegrityError as e:
+        return safe_json_response(get_user_friendly_error("GLUCOSE_DATA_ERROR", str(e)), 422)
     except DatabaseError as e:
         return safe_json_response(get_user_friendly_error("DATABASE_ERROR", str(e)), 500)
     except Exception as e:
