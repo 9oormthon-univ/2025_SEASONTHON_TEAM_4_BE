@@ -8,7 +8,16 @@ def format_glucose_data(readings):
     """혈당 데이터를 CGM 형식으로 변환"""
     cgm_readings = []
     for r in readings:
-        iso_time = f"{r.date}T{r.time}" if r.time else f"{r.date}T00:00:00"
+        # 시간 처리를 안전하게 수정
+        if hasattr(r, 'time') and r.time:
+            if isinstance(r.time, str):
+                iso_time = f"{r.date}T{r.time}"
+            else:
+                # datetime.time 객체인 경우
+                iso_time = f"{r.date}T{r.time.strftime('%H:%M:%S')}"
+        else:
+            iso_time = f"{r.date}T00:00:00"
+        
         cgm_readings.append({
             "time": iso_time,
             "glucose_mg_dl": r.glucose_mg_dl,

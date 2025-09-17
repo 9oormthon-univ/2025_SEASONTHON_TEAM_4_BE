@@ -2,16 +2,16 @@
 
 import json
 import random
-from common.ai import call_openai_api
-from common.utils.io import load_text
-from common.services.glucose_service import calculate_glucose_metrics
+from app.core.ai import call_openai_api
+from app.utils.io import load_text
+from app.services.glucose_service import calculate_glucose_metrics
 
 
 def generate_llm_quests(glucose_metrics, member_info=None):
     """LLM을 사용하여 개인화된 퀘스트 생성"""
     try:
         # 프롬프트 로드
-        prompt_text = load_text("prompts/quest_generation_prompt.txt")
+        prompt_text = load_text("app/prompts/quest_generation_prompt.txt")
         
         # 프롬프트에 실제 데이터 치환
         avg_glucose = glucose_metrics.get('average_glucose', 120)

@@ -2,8 +2,8 @@
 
 import json
 import re
-from common.ai import call_openai_api
-from common.utils.io import load_text
+from app.core.ai import call_openai_api
+from app.utils.io import load_text
 
 
 def format_analyze_prompt(prompt, avg_glucose, max_glucose, min_glucose, spike_count, measurement_count):
@@ -77,3 +77,42 @@ def get_default_child_summary(summary):
     summary_text += f"가볍게 몸을 움직일 때마다 혈당이 차분하게 돌아오는\n모습이 보여서 참 잘했어!"
     
     return summary_text
+
+
+def get_default_parent_summary(summary):
+    """부모용 기본 요약 템플릿"""
+    if summary['average_glucose'] <= 120 and summary['tir_percentage'] >= 70:
+        summary_text = f"이번 주 아이의 혈당은 평균적으로 아주 잘 유지되었습니다.\n(평균 {summary['average_glucose']}mg/dL, 안정 구간 {summary['tir_percentage']}%)\n"
+    elif summary['average_glucose'] <= 140 and summary['tir_percentage'] >= 60:
+        summary_text = f"이번 주 아이의 혈당은 양호하게 유지되었습니다.\n(평균 {summary['average_glucose']}mg/dL, 안정 구간 {summary['tir_percentage']}%)\n"
+    else:
+        summary_text = f"이번 주 아이의 혈당은 주의가 필요합니다.\n(평균 {summary['average_glucose']}mg/dL, 안정 구간 {summary['tir_percentage']}%)\n"
+    
+    if summary['hyperglycemia_count'] > 0:
+        summary_text += f"식사 후 {summary['hyperglycemia_count']}번의 고혈당이 있었지만, 전반적으로 관리가 잘 되고 있습니다.\n"
+    else:
+        summary_text += "식사 후에도 혈당이 잘 조절되었습니다.\n"
+    
+    summary_text += f"혈당 변동성은 {summary['glucose_variability']}mg/dL로 안정적인 편입니다.\n"
+    summary_text += "아이의 혈당 관리를 위해 꾸준히 지도해주시기 바랍니다."
+    
+    return summary_text
+
+
+def get_default_parent_analysis(summary):
+    """부모용 기본 분석 템플릿"""
+    analysis_text = f"혈당 분석 결과:\n\n"
+    analysis_text += f"• 평균 혈당: {summary['average_glucose']}mg/dL\n"
+    analysis_text += f"• 안정 구간 비율: {summary['tir_percentage']}%\n"
+    analysis_text += f"• 고혈당 횟수: {summary['hyperglycemia_count']}회\n"
+    analysis_text += f"• 저혈당 횟수: {summary['hypoglycemia_count']}회\n"
+    analysis_text += f"• 혈당 변동성: {summary['glucose_variability']}mg/dL\n\n"
+    
+    if summary['average_glucose'] <= 120 and summary['tir_percentage'] >= 70:
+        analysis_text += "전반적으로 매우 양호한 혈당 관리 상태입니다. 현재의 관리 방법을 유지하시기 바랍니다."
+    elif summary['average_glucose'] <= 140 and summary['tir_percentage'] >= 60:
+        analysis_text += "양호한 혈당 관리 상태입니다. 약간의 개선이 필요할 수 있으니 식단과 운동을 더 신경써주세요."
+    else:
+        analysis_text += "혈당 관리에 주의가 필요합니다. 의료진과 상담하여 관리 방법을 개선하시기 바랍니다."
+    
+    return analysis_text
