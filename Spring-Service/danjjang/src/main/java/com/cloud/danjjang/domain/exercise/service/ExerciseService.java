@@ -38,4 +38,19 @@ public class ExerciseService {
                 .exerciseType(saved.getExerciseType())
                 .build();
     }
+
+    public ExerciseResponseDTO.ExerciseSaveDTO getExercise(Member member, Long exerciseId) {
+        Exercise exercise = exerciseRepository
+                .findByIdAndMember_Id(exerciseId, member.getId())
+                .orElseThrow(() -> new IllegalArgumentException("운동 기록을 찾을 수 없습니다."));
+
+        return ExerciseResponseDTO.ExerciseSaveDTO.builder()
+                .exerciseId(exercise.getId())
+                .title(exercise.getTitle())
+                .date(exercise.getDate())
+                .startTime(exercise.getStartTime())
+                .exerciseTime(exercise.getExerciseTime())
+                .exerciseType(exercise.getExerciseType())
+                .build();
+    }
 }

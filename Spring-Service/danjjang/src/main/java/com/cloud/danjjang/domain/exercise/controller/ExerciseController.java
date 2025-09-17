@@ -26,4 +26,10 @@ public class ExerciseController {
     public ApiResponse<ExerciseResponseDTO.ExerciseSaveDTO> saveExercise(@AuthUser Member member, @Valid @RequestBody ExerciseRequestDTO.ExerciseSaveDTO exerciseSaveDTO) {
         return ApiResponse.onSuccess(exerciseService.saveExercise(member, exerciseSaveDTO));
     }
+
+    @GetMapping("/{exerciseId}")
+    @Operation(summary = "부모 운동기록 확인 API")
+    public ApiResponse<ExerciseResponseDTO.ExerciseSaveDTO> getExerciseById(@AuthUser Member member, @PathVariable("exerciseId") Long exerciseId) {
+        return ApiResponse.onSuccess(exerciseService.getExercise(member, exerciseId));
+    }
 }
