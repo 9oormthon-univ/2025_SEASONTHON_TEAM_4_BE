@@ -1,47 +1,37 @@
 """퀘스트 관련 API 엔드포인트 - 기존 구조 유지"""
 
-from flask import Blueprint, request
-from app.utils.error_handler import (
+from flask import Blueprint, request, g
+from app.utils.error import (
     log_request_info, safe_json_response, ValidationError, NotFoundError, DatabaseError,
-    DataIntegrityError, TimeoutError, ServiceUnavailableError, QuestError
+    DataIntegrityError, TimeoutError, ServiceUnavailableError, QuestError,
+    get_user_friendly_error, get_user_friendly_success
 )
-from app.utils.user_messages import get_user_friendly_error, get_user_friendly_success
-from app.utils.database_utils import (
+from app.utils.auth import jwt_auth_member_id
+from app.database import (
     get_member_info, get_glucose_data, get_weekly_glucose_data,
     save_quests_to_db, get_quests_by_date
 )
-from app.utils.glucose_utils import (
+from app.utils.business import (
     format_glucose_data, calculate_weekly_glucose_summary,
-    get_default_date_range
+    get_default_date_range, generate_llm_quests
 )
 from app.services.glucose_service import calculate_glucose_metrics
-from app.utils.quest_utils import generate_llm_quests
 from datetime import datetime
 
 quests_bp = Blueprint('quests', __name__)
 
 
 @quests_bp.route("/", methods=["GET"])
+@jwt_auth_member_id
 @log_request_info
 def combined_quest():
     """혈당 퀘스트와 기록 퀘스트를 통합하여 총 4개 퀘스트 반환"""
     try:
-        # 파라미터 검증
-        member_id = request.args.get("member_id")
-        if not member_id:
-            raise ValidationError("member_id 파라미터가 필요합니다")
-        
-        try:
-            member_id = int(member_id)
-        except ValueError:
-            raise ValidationError("member_id는 숫자여야 합니다")
+        # JWT에서 member_id 가져오기
+        member_id = g.member_id
+        member_info = g.member_info
         
         today = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
-        
-        # 회원 정보 조회
-        member_info = get_member_info(member_id)
-        if not member_info:
-            raise NotFoundError("회원을 찾을 수 없습니다")
         
         # 해당 날짜에 이미 퀘스트가 있는지 확인
         existing_quests = get_quests_by_date(member_id, today)
@@ -111,19 +101,13 @@ def combined_quest():
 
 
 @quests_bp.route("/list", methods=["GET"])
+@jwt_auth_member_id
 @log_request_info
 def get_quests_api():
     """날짜별 퀘스트 조회 API (LLM 분석 포함)"""
     try:
-        # 파라미터 검증
-        member_id = request.args.get("member_id")
-        if not member_id:
-            raise ValidationError("member_id 파라미터가 필요합니다")
-        
-        try:
-            member_id = int(member_id)
-        except ValueError:
-            raise ValidationError("member_id는 숫자여야 합니다")
+        # JWT에서 member_id 가져오기
+        member_id = g.member_id
         
         date_str = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
         

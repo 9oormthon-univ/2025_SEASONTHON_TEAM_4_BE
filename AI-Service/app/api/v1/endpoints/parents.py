@@ -1,30 +1,27 @@
 """부모 관련 API 엔드포인트 - 기존 구조 유지"""
 
-from flask import Blueprint, request, jsonify
-from app.utils.error_handler import (
+from flask import Blueprint, request, jsonify, g
+from app.utils.error import (
     log_request_info, safe_json_response, ValidationError, NotFoundError, DatabaseError,
     AuthenticationError, AuthorizationError, RateLimitError, ServiceUnavailableError,
     TimeoutError, DataIntegrityError, QuestError, handle_ai_service_error,
     handle_database_error, handle_glucose_data_error, handle_quest_error,
     validate_glucose_value, validate_quest_status, validate_approval_status,
-    validate_age, validate_diabetes_type
+    validate_age, validate_diabetes_type, get_user_friendly_error, get_user_friendly_success
 )
-from app.utils.user_messages import get_user_friendly_error, get_user_friendly_success
-from app.utils.database_utils import (
+from app.utils.auth import jwt_auth_code, require_permission, Permission
+from app.database import (
     get_member_info, get_quests_by_date, get_weekly_glucose_data, get_glucose_data,
     get_food_data, get_exercise_data, get_glucose_food_correlation, get_glucose_exercise_correlation
 )
-from app.utils.glucose_utils import (
+from app.utils.business import (
     format_glucose_data, calculate_weekly_glucose_summary,
-    get_default_date_range
-)
-from app.services.glucose_service import calculate_glucose_metrics, analyze_glucose
-from app.utils.io import load_text
-from app.utils.glucose_analysis_utils import (
-    analyze_food_glucose_impact, analyze_exercise_glucose_impact, 
+    get_default_date_range, analyze_food_glucose_impact, analyze_exercise_glucose_impact, 
     generate_daily_glucose_analysis
 )
-from app.db.database import SessionLocal
+from app.services.glucose_service import calculate_glucose_metrics, analyze_glucose
+from app.utils.common import load_text
+from app.database import SessionLocal
 from app.models.database_models import Quest
 from datetime import datetime
 
@@ -32,21 +29,21 @@ parents_bp = Blueprint('parents', __name__)
 
 
 @parents_bp.route("/report", methods=["GET"])
+@jwt_auth_code
 @log_request_info
 def parent_report_api():
     """부모를 대상으로 한 주간 혈당 분석 보고서 API"""
     try:
-        member_id = int(request.args.get("member_id", 1))
+        # JWT에서 member_id와 code 가져오기
+        member_id = g.member_id
+        member_info = g.member_info
+        code = member_info.get('code')  # member 테이블의 code 정보로 해당 아이의 부모 인증
+        
         start_date = request.args.get("start_date")
         end_date = request.args.get("end_date")
         
         if not start_date or not end_date:
             start_date, end_date = get_default_date_range()
-        
-        # 회원 정보 확인
-        member_info = get_member_info(member_id)
-        if not member_info:
-            raise NotFoundError("회원을 찾을 수 없습니다.")
         
         # 주간 혈당 데이터 조회
         glucose_data = get_weekly_glucose_data(member_id, start_date, end_date)
@@ -101,21 +98,21 @@ def parent_report_api():
 
 
 @parents_bp.route("/analyze", methods=["GET"])
+@jwt_auth_code
 @log_request_info
 def parent_analyze_api():
     """부모를 대상으로 한 혈당 분석 API"""
     try:
-        member_id = int(request.args.get("member_id", 1))
+        # JWT에서 member_id와 code 가져오기
+        member_id = g.member_id
+        member_info = g.member_info
+        code = member_info.get('code')  # 부모의 code 정보
+        
         start_date = request.args.get("start_date")
         end_date = request.args.get("end_date")
         
         if not start_date or not end_date:
             start_date, end_date = get_default_date_range()
-        
-        # 회원 정보 확인
-        member_info = get_member_info(member_id)
-        if not member_info:
-            raise NotFoundError("회원을 찾을 수 없습니다.")
         
         # 주간 혈당 데이터 조회
         glucose_data = get_weekly_glucose_data(member_id, start_date, end_date)
@@ -170,18 +167,22 @@ def parent_analyze_api():
 
 
 @parents_bp.route("/approve", methods=["POST"])
+@jwt_auth_code
+@require_permission(Permission.MANAGE_CHILD)
 @log_request_info
 def parent_approve_api():
     """부모가 아이의 퀘스트 완료를 승인하는 API"""
     try:
         data = request.get_json()
         quest_id = data.get("quest_id")
-        member_id = data.get("member_id")
         approval_status = data.get("approval_status", "승인")  # "승인" 또는 "거부"
         
+        # JWT에서 member_id 가져오기
+        member_id = g.member_id
+        
         # 유효성 검증
-        if not quest_id or not member_id:
-            raise ValidationError("quest_id와 member_id가 필요합니다.")
+        if not quest_id:
+            raise ValidationError("quest_id가 필요합니다.")
         
         # 승인 상태 유효성 검증
         approval_status = validate_approval_status(approval_status)
@@ -221,16 +222,14 @@ def parent_approve_api():
 
 
 @parents_bp.route("/hint", methods=["GET"])
+@jwt_auth_code
 @log_request_info
 def parent_hint_api():
     """부모를 위한 오늘의 돌봄 힌트 제공 API (오늘 하루 혈당 데이터 기반)"""
     try:
-        member_id = int(request.args.get("member_id", 1))
-        
-        # 회원 정보 확인
-        member_info = get_member_info(member_id)
-        if not member_info:
-            raise NotFoundError("회원을 찾을 수 없습니다.")
+        # JWT에서 member_id 가져오기
+        member_id = g.member_id
+        member_info = g.member_info
         
         # 오늘 날짜 설정
         from datetime import datetime
@@ -266,17 +265,16 @@ def parent_hint_api():
 
 
 @parents_bp.route("/daily-hint", methods=["GET"])
+@jwt_auth_code
 @log_request_info
 def parent_daily_hint_api():
     """오늘의 돌봄 힌트 제공 API (오늘 하루 혈당 데이터 기반)"""
     try:
-        member_id = int(request.args.get("member_id", 1))
-        date = request.args.get("date")  # YYYY-MM-DD 형식
+        # JWT에서 member_id 가져오기
+        member_id = g.member_id
+        member_info = g.member_info
         
-        # 회원 정보 확인
-        member_info = get_member_info(member_id)
-        if not member_info:
-            raise NotFoundError("회원을 찾을 수 없습니다.")
+        date = request.args.get("date")  # YYYY-MM-DD 형식
         
         # 날짜 설정 (기본값: 오늘)
         if not date:
@@ -826,30 +824,18 @@ def generate_encouragement_message(summary):
 
 
 @parents_bp.route("/glucose/correlation", methods=["GET"])
+@jwt_auth_code
 @log_request_info
 def parent_glucose_analysis_api():
     """일일 혈당 변화 종합 분석 API (음식 + 운동 + 혈당 통합 분석)"""
     try:
-        # 요청 파라미터 검증
-        member_id = request.args.get("member_id")
-        if not member_id:
-            raise ValidationError("member_id는 필수 파라미터입니다.")
-        
-        try:
-            member_id = int(member_id)
-            if member_id <= 0:
-                raise ValidationError("member_id는 양수여야 합니다.")
-        except ValueError:
-            raise ValidationError("member_id는 숫자여야 합니다.")
+        # JWT에서 member_id 가져오기
+        member_id = g.member_id
+        member_info = g.member_info
         
         # 날짜는 항상 오늘로 설정
         from datetime import datetime
         date = datetime.now().strftime("%Y-%m-%d")
-        
-        # 회원 정보 확인
-        member_info = get_member_info(member_id)
-        if not member_info:
-            raise NotFoundError(f"회원 ID {member_id}를 찾을 수 없습니다.")
         
         # 해당 날짜의 모든 데이터 조회
         try:

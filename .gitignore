@@ -16,9 +16,16 @@ AI-Service/*.iml
 
 AI-Service/.env
 
-# 데이터 및 의존성 파일 무시
-AI-Service/config.py
-AI-Service/app/db.py
+# AI-Service specific files to ignore
+AI-Service/app/core/config.py
+AI-Service/app/cache/
+AI-Service/app/logs/
+AI-Service/.DS_Store
+AI-Service/*.db
+AI-Service/*.sqlite*
+AI-Service/*.bin
+AI-Service/app/embedding_data/README.md
+
 
 
 __pycache__/
