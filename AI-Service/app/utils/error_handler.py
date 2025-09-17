@@ -3,6 +3,7 @@
 import logging
 import traceback
 from flask import request, jsonify
+from werkzeug.exceptions import MethodNotAllowed, BadRequest, NotFound as WerkzeugNotFound, UnsupportedMediaType
 from datetime import datetime
 from typing import Dict, Any, Optional
 from app.utils.monitoring import log_error_to_monitor, log_request_to_monitor
@@ -113,6 +114,42 @@ def handle_api_error(error: Exception) -> tuple:
             }
         }, error.status_code)
     
+    # Werkzeug 예외 처리
+    if isinstance(error, MethodNotAllowed):
+        logger.warning(f"허용되지 않은 메서드: {request.method} {request.path}")
+        from app.utils.user_messages import get_user_friendly_error
+        error_response = get_user_friendly_error("METHOD_NOT_ALLOWED")
+        error_response["error"]["details"] = {
+            "allowed_methods": getattr(error, 'valid_methods', []),
+            "requested_method": request.method
+        }
+        return safe_json_response(error_response, 405)
+    
+    if isinstance(error, BadRequest):
+        logger.warning(f"잘못된 요청: {request.method} {request.path} - {str(error)}")
+        from app.utils.user_messages import get_user_friendly_error
+        error_response = get_user_friendly_error("BAD_REQUEST", str(error))
+        return safe_json_response(error_response, 400)
+    
+    if isinstance(error, WerkzeugNotFound):
+        logger.warning(f"리소스를 찾을 수 없음: {request.method} {request.path}")
+        from app.utils.user_messages import get_user_friendly_error
+        error_response = get_user_friendly_error("NOT_FOUND")
+        error_response["error"]["details"] = {
+            "path": request.path
+        }
+        return safe_json_response(error_response, 404)
+    
+    if isinstance(error, UnsupportedMediaType):
+        logger.warning(f"지원되지 않는 미디어 타입: {request.method} {request.path} - {request.content_type}")
+        from app.utils.user_messages import get_user_friendly_error
+        error_response = get_user_friendly_error("BAD_REQUEST", "Content-Type이 application/json이어야 합니다")
+        error_response["error"]["details"] = {
+            "content_type": request.content_type,
+            "expected": "application/json"
+        }
+        return safe_json_response(error_response, 415)
+    
     # 일반 예외인 경우
     logger.error(f"예상치 못한 에러: {str(error)}", exc_info=True)
     return safe_json_response({
@@ -167,6 +204,21 @@ def log_request_info(func):
             logger.info(f"요청 시작: {request.method} {request.path}")
             logger.info(f"파라미터: {dict(request.args)}")
             
+            # JSON 데이터가 있는 경우 로깅 (민감한 정보 제외)
+            if request.is_json:
+                try:
+                    json_data = request.get_json() or {}
+                    # 민감한 정보 마스킹
+                    safe_json = {}
+                    for key, value in json_data.items():
+                        if any(sensitive in key.lower() for sensitive in ['password', 'token', 'key', 'secret']):
+                            safe_json[key] = "***"
+                        else:
+                            safe_json[key] = value
+                    logger.info(f"JSON 데이터: {safe_json}")
+                except Exception as e:
+                    logger.warning(f"JSON 파싱 실패: {e}")
+            
             # 함수 실행
             result = func(*args, **kwargs)
             
@@ -194,6 +246,12 @@ def log_request_info(func):
             duration = (datetime.now() - start_time).total_seconds()
             logger.error(f"요청 실패: {request.method} {request.path} - {str(e)} (소요시간: {duration:.3f}초)")
             
+            # 상세 에러 정보 로깅
+            if hasattr(e, 'status_code'):
+                logger.error(f"에러 상태 코드: {e.status_code}")
+            if hasattr(e, 'error_code'):
+                logger.error(f"에러 코드: {e.error_code}")
+            
             # 모니터링 에러 로깅
             try:
                 log_error_to_monitor(
@@ -210,3 +268,58 @@ def log_request_info(func):
     
     wrapper.__name__ = func.__name__
     return wrapper
+
+
+def validate_json_request():
+    """JSON 요청 유효성 검증"""
+    if not request.is_json:
+        raise ValidationError("Content-Type이 application/json이어야 합니다")
+    
+    try:
+        data = request.get_json()
+        if data is None:
+            raise ValidationError("유효한 JSON 데이터가 필요합니다")
+        return data
+    except Exception as e:
+        raise ValidationError(f"JSON 파싱 오류: {str(e)}")
+
+
+def validate_member_id(member_id):
+    """회원 ID 유효성 검증"""
+    if not member_id:
+        raise ValidationError("member_id가 필요합니다")
+    
+    try:
+        member_id = int(member_id)
+        if member_id <= 0:
+            raise ValidationError("member_id는 양수여야 합니다")
+        return member_id
+    except ValueError:
+        raise ValidationError("member_id는 숫자여야 합니다")
+
+
+def validate_quest_id(quest_id):
+    """퀘스트 ID 유효성 검증"""
+    if not quest_id:
+        raise ValidationError("quest_id가 필요합니다")
+    
+    try:
+        quest_id = int(quest_id)
+        if quest_id <= 0:
+            raise ValidationError("quest_id는 양수여야 합니다")
+        return quest_id
+    except ValueError:
+        raise ValidationError("quest_id는 숫자여야 합니다")
+
+
+def validate_date_format(date_str, field_name="date"):
+    """날짜 형식 유효성 검증"""
+    if not date_str:
+        return None
+    
+    try:
+        from datetime import datetime
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return date_str
+    except ValueError:
+        raise ValidationError(f"{field_name}는 YYYY-MM-DD 형식이어야 합니다")

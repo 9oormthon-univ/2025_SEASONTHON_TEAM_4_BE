@@ -6,3 +6,10 @@ sqlalchemy
 pymysql
 httpx
 psutil
+transformers
+torch
+sentence-transformers
+faiss-cpu
+numpy
+scikit-learn
+chromadb

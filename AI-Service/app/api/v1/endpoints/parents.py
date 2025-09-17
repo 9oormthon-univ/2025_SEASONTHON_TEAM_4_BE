@@ -40,11 +40,15 @@ def parent_report_api():
         # 혈당 요약 계산
         summary = calculate_weekly_glucose_summary(glucose_data)
         
-        # LLM을 사용한 분석
+        # RAG 강화된 LLM 분석
         formatted_data = format_glucose_data(glucose_data)
         glucose_metrics = calculate_glucose_metrics(formatted_data)
         prompt_text = load_text("app/prompts/parent_report_prompt.txt")
-        analysis_result = analyze_glucose(glucose_metrics, prompt_text, member_info.get('age'))
+        analysis_result = analyze_glucose(glucose_metrics, prompt_text, member_info.get('age'), member_id, use_rag=True, analysis_type="analyze")
+        
+        # RAG 메타데이터 추출 (내부 처리용)
+        if isinstance(analysis_result, dict) and 'rag_metadata' in analysis_result:
+            analysis_result.pop('rag_metadata')
         
         # LLM 결과에서 요약 텍스트 추출 (안전한 처리)
         summary_text = ''
@@ -105,16 +109,24 @@ def parent_analyze_api():
         # 혈당 요약 계산
         summary = calculate_weekly_glucose_summary(glucose_data)
         
-        # LLM을 사용한 분석
+        # RAG 강화된 LLM 분석
         formatted_data = format_glucose_data(glucose_data)
         glucose_metrics = calculate_glucose_metrics(formatted_data)
         prompt_text = load_text("app/prompts/parent_analyze_prompt.txt")
-        analysis_result = analyze_glucose(glucose_metrics, prompt_text, member_info.get('age'))
+        analysis_result = analyze_glucose(glucose_metrics, prompt_text, member_info.get('age'), member_id, use_rag=True, analysis_type="analyze")
+        
+        # RAG 메타데이터 추출 (내부 처리용)
+        if isinstance(analysis_result, dict) and 'rag_metadata' in analysis_result:
+            analysis_result.pop('rag_metadata')
         
         # LLM 결과에서 분석 텍스트 추출 (안전한 처리)
         analysis_text = ''
         if isinstance(analysis_result, dict):
-            analysis_text = analysis_result.get('analysis', '')
+            # RAG 결과인 경우 result 키에서 추출
+            if 'result' in analysis_result:
+                analysis_text = analysis_result['result']
+            else:
+                analysis_text = analysis_result.get('analysis', '')
         else:
             print(f"Unexpected analysis_result type: {type(analysis_result)}")
             print(f"analysis_result content: {analysis_result}")

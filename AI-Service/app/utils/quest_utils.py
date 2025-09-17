@@ -4,11 +4,23 @@ import json
 import random
 from app.core.ai import call_openai_api
 from app.utils.io import load_text
-from app.services.glucose_service import calculate_glucose_metrics
 
 
-def generate_llm_quests(glucose_metrics, member_info=None):
-    """LLM을 사용하여 개인화된 퀘스트 생성"""
+def generate_llm_quests(glucose_metrics, member_info=None, member_id=None, use_rag=False):
+    """기본 LLM을 사용하여 개인화된 퀘스트 생성"""
+    try:
+        # 기본 LLM 퀘스트 생성 방식
+        return generate_basic_llm_quests(glucose_metrics, member_info)
+        
+    except Exception as e:
+        print(f"퀘스트 생성 오류: {e}")
+        return get_fallback_quests(glucose_metrics)
+
+
+
+
+def generate_basic_llm_quests(glucose_metrics, member_info):
+    """기본 LLM 퀘스트 생성"""
     try:
         # 프롬프트 로드
         prompt_text = load_text("app/prompts/quest_generation_prompt.txt")
@@ -42,8 +54,10 @@ def generate_llm_quests(glucose_metrics, member_info=None):
         return get_fallback_quests(glucose_metrics)
         
     except Exception as e:
-        print(f"LLM 퀘스트 생성 오류: {e}")
+        print(f"기본 LLM 퀘스트 생성 오류: {e}")
         return get_fallback_quests(glucose_metrics)
+
+
 
 
 def get_fallback_quests(glucose_metrics):

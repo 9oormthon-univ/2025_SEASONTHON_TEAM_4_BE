@@ -83,6 +83,24 @@ USER_MESSAGES = {
             "type": "error",
             "status_code": 409,
             "number": 4009
+        },
+        "METHOD_NOT_ALLOWED": {
+            "title": "허용되지 않은 메서드",
+            "message": "요청하신 HTTP 메서드가 이 엔드포인트에서 지원되지 않습니다.",
+            "action": "올바른 HTTP 메서드를 사용해주세요",
+            "category": "요청 오류",
+            "type": "error",
+            "status_code": 405,
+            "number": 4005
+        },
+        "BAD_REQUEST": {
+            "title": "잘못된 요청",
+            "message": "요청 형식이 올바르지 않습니다.",
+            "action": "요청 형식을 확인해주세요",
+            "category": "요청 오류",
+            "type": "error",
+            "status_code": 400,
+            "number": 4000
         }
     }
 }

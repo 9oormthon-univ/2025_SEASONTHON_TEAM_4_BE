@@ -88,7 +88,7 @@ class Quest(Base):
     quest_content = Column(Text)
     quest_date = Column(Date, nullable=False, index=True)
     is_completed = Column(Boolean, default=False)
-    approval_status = Column(String(20), default="pending")  # pending, approved, rejected
+    approval_status = Column(String(50), default="pending")  # pending, approved, rejected
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
