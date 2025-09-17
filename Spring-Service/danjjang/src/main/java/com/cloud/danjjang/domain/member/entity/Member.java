@@ -5,12 +5,15 @@ import com.cloud.danjjang.domain.enums.DiabetesType;
 import com.cloud.danjjang.domain.enums.Gender;
 import com.cloud.danjjang.domain.enums.Sensor;
 import com.cloud.danjjang.domain.enums.Status;
+import com.cloud.danjjang.domain.exercise.entity.Exercise;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -73,4 +76,7 @@ public class Member extends BaseTimeEntity {
         this.gender = gender;
         this.height = height;
     }
+
+    @OneToMany(mappedBy = "member", orphanRemoval = true)
+    private List<Exercise> exercises = new ArrayList<>();
 }
