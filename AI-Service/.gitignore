@@ -217,3 +217,15 @@ prometheus/
 secrets/
 secrets.json
 credentials.json
+
+# ChromaDB cache directories
+app/cache/
+app/embedding_data/
+app/cache/rag/chroma_db/
+app/cache/rag/chroma_db/891e1a56-3d96-41c4-a2ba-35a699a19d4f/
+app/core/config.py
+app/embedding_data/README.md
+**/chroma_db/
+**/chroma_db/**
+*.bin
+chroma.sqlite3
