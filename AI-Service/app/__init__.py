@@ -28,29 +28,8 @@ def create_app() -> Flask:
          allow_headers=settings.CORS_HEADERS,
          supports_credentials=True)
     
-    # Content-Type 검증 미들웨어
-    @app.before_request
-    def validate_content_type():
-        from flask import request
-        if request.method in ['POST', 'PUT', 'PATCH']:
-            if request.path.startswith('/api/') or request.path.startswith('/child/') or request.path.startswith('/parent/'):
-                if not request.is_json and request.content_type != 'application/json':
-                    from app.utils.error_handler import safe_json_response
-                    from app.utils.user_messages import get_user_friendly_error
-                    error_response = get_user_friendly_error("BAD_REQUEST", "Content-Type이 application/json이어야 합니다")
-                    error_response["error"]["details"] = {
-                        "content_type": request.content_type,
-                        "expected": "application/json"
-                    }
-                    return safe_json_response(error_response, 415)
-    
     # 에러 핸들러 등록
-    from werkzeug.exceptions import MethodNotAllowed, BadRequest, NotFound as WerkzeugNotFound, UnsupportedMediaType
     app.register_error_handler(APIError, handle_api_error)
-    app.register_error_handler(MethodNotAllowed, handle_api_error)
-    app.register_error_handler(BadRequest, handle_api_error)
-    app.register_error_handler(WerkzeugNotFound, handle_api_error)
-    app.register_error_handler(UnsupportedMediaType, handle_api_error)
     app.register_error_handler(Exception, handle_api_error)
     
     # API 블루프린트 등록 (통합된 구조)
@@ -81,6 +60,8 @@ def create_app() -> Flask:
                     "parent_analyze": "/parent/analyze",
                     "parent_approve": "/parent/approve",
                     "parent_report": "/parent/report",
+                    "parent_hint": "/parent/hint",
+                    "parent_daily_hint": "/parent/daily-hint",
                     "child_request": "/child/request",
                     "child_report": "/child/report"
                 },
