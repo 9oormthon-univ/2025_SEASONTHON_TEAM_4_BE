@@ -38,10 +38,13 @@ public class MemberSignDTO {
         @NotNull
         Float height;
 
+        @NotNull
         Gender gender;
 
+        @NotNull
         DiabetesType diabetesType;
 
+        @NotNull
         Sensor sensor;
     }
 

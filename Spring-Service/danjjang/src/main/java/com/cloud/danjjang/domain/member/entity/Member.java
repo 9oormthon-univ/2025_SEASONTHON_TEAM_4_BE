@@ -29,6 +29,7 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false)
     private String email;
 
+    @Setter
     @Column(nullable = false)
     private String password;
 
@@ -53,8 +54,8 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false)
     private DiabetesType diabetesType;
 
+    @Setter
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Sensor sensor;
 
     @Column(name = "code", length = 10, nullable = false, unique = true)
