@@ -57,6 +57,62 @@ class ConflictError(APIError):
         super().__init__(message, 409, "CONFLICT", details)
 
 
+class AuthenticationError(APIError):
+    """인증 에러"""
+    
+    def __init__(self, message: str, details: Dict = None):
+        super().__init__(message, 401, "AUTHENTICATION_ERROR", details)
+
+
+class AuthorizationError(APIError):
+    """권한 에러"""
+    
+    def __init__(self, message: str, details: Dict = None):
+        super().__init__(message, 403, "AUTHORIZATION_ERROR", details)
+
+
+class RateLimitError(APIError):
+    """요청 제한 에러"""
+    
+    def __init__(self, message: str, details: Dict = None):
+        super().__init__(message, 429, "RATE_LIMIT_ERROR", details)
+
+
+class ServiceUnavailableError(APIError):
+    """서비스 이용 불가 에러"""
+    
+    def __init__(self, message: str, details: Dict = None):
+        super().__init__(message, 503, "SERVICE_UNAVAILABLE", details)
+
+
+class TimeoutError(APIError):
+    """타임아웃 에러"""
+    
+    def __init__(self, message: str, details: Dict = None):
+        super().__init__(message, 408, "TIMEOUT_ERROR", details)
+
+
+class DataIntegrityError(APIError):
+    """데이터 무결성 에러"""
+    
+    def __init__(self, message: str, details: Dict = None):
+        super().__init__(message, 422, "DATA_INTEGRITY_ERROR", details)
+
+
+class ResourceExhaustedError(APIError):
+    """리소스 고갈 에러"""
+    
+    def __init__(self, message: str, details: Dict = None):
+        super().__init__(message, 507, "RESOURCE_EXHAUSTED", details)
+
+
+class QuestError(APIError):
+    """퀘스트 에러"""
+    
+    def __init__(self, message: str, details: Dict = None):
+        super().__init__(message, 422, "QUEST_ERROR", details)
+
+
 def safe_json_response(data: Any, status_code: int = 200) -> tuple:
     """안전한 JSON 응답 생성"""
     try:
@@ -105,14 +161,15 @@ def handle_api_error(error: Exception) -> tuple:
     # APIError인 경우
     if isinstance(error, APIError):
         logger.warning(f"API 에러: {error.message} (코드: {error.error_code})")
-        return safe_json_response({
-            "error": {
-                "code": error.error_code,
-                "message": error.message,
-                "status_code": error.status_code,
-                "details": error.details
-            }
-        }, error.status_code)
+        
+        # 사용자 친화적 메시지 가져오기
+        from app.utils.user_messages import get_user_friendly_error
+        user_friendly_response = get_user_friendly_error(error.error_code, error.message)
+        
+        # 상세 정보 추가
+        user_friendly_response["error"]["details"] = error.details
+        
+        return safe_json_response(user_friendly_response, error.status_code)
     
     # Werkzeug 예외 처리
     if isinstance(error, MethodNotAllowed):
@@ -323,3 +380,124 @@ def validate_date_format(date_str, field_name="date"):
         return date_str
     except ValueError:
         raise ValidationError(f"{field_name}는 YYYY-MM-DD 형식이어야 합니다")
+
+
+def validate_glucose_value(glucose_value, field_name="glucose"):
+    """혈당 값 유효성 검증"""
+    if glucose_value is None:
+        raise ValidationError(f"{field_name} 값이 필요합니다")
+    
+    try:
+        glucose_value = float(glucose_value)
+        if glucose_value < 0 or glucose_value > 1000:
+            raise ValidationError(f"{field_name}는 0-1000 범위의 값이어야 합니다")
+        return glucose_value
+    except (ValueError, TypeError):
+        raise ValidationError(f"{field_name}는 숫자여야 합니다")
+
+
+def validate_quest_status(status):
+    """퀘스트 상태 유효성 검증"""
+    valid_statuses = ["요청 중", "승인", "거부", "완료"]
+    if status not in valid_statuses:
+        raise ValidationError(f"퀘스트 상태는 다음 중 하나여야 합니다: {', '.join(valid_statuses)}")
+    return status
+
+
+def validate_approval_status(status):
+    """승인 상태 유효성 검증"""
+    valid_statuses = ["승인", "거부"]
+    if status not in valid_statuses:
+        raise ValidationError(f"승인 상태는 '승인' 또는 '거부'여야 합니다")
+    return status
+
+
+def validate_age(age):
+    """나이 유효성 검증"""
+    if not age:
+        raise ValidationError("나이가 필요합니다")
+    
+    try:
+        age = int(age)
+        if age < 0 or age > 120:
+            raise ValidationError("나이는 0-120 범위의 값이어야 합니다")
+        return age
+    except (ValueError, TypeError):
+        raise ValidationError("나이는 숫자여야 합니다")
+
+
+def validate_diabetes_type(diabetes_type):
+    """당뇨 타입 유효성 검증"""
+    valid_types = ["1형", "2형", "임신성"]
+    if diabetes_type not in valid_types:
+        raise ValidationError(f"당뇨 타입은 다음 중 하나여야 합니다: {', '.join(valid_types)}")
+    return diabetes_type
+
+
+def handle_ai_service_error(error_message: str, original_error: Exception = None):
+    """AI 서비스 에러 처리"""
+    logger.error(f"AI 서비스 에러: {error_message}")
+    if original_error:
+        logger.error(f"원본 에러: {str(original_error)}")
+    
+    # AI 서비스 관련 에러 메시지 분류
+    if "timeout" in error_message.lower() or "timed out" in error_message.lower():
+        raise TimeoutError("AI 분석 서비스 응답 시간이 초과되었습니다")
+    elif "rate limit" in error_message.lower() or "too many requests" in error_message.lower():
+        raise RateLimitError("AI 서비스 요청 제한에 도달했습니다")
+    elif "service unavailable" in error_message.lower() or "unavailable" in error_message.lower():
+        raise ServiceUnavailableError("AI 분석 서비스를 일시적으로 이용할 수 없습니다")
+    else:
+        raise ExternalServiceError(f"AI 분석 서비스에서 오류가 발생했습니다: {error_message}")
+
+
+def handle_database_error(error_message: str, original_error: Exception = None):
+    """데이터베이스 에러 처리"""
+    logger.error(f"데이터베이스 에러: {error_message}")
+    if original_error:
+        logger.error(f"원본 에러: {str(original_error)}")
+    
+    # 데이터베이스 관련 에러 메시지 분류
+    if "duplicate" in error_message.lower() or "unique constraint" in error_message.lower():
+        raise ConflictError("이미 존재하는 데이터입니다")
+    elif "foreign key" in error_message.lower() or "constraint" in error_message.lower():
+        raise DataIntegrityError("데이터 무결성 제약 조건을 위반했습니다")
+    elif "timeout" in error_message.lower() or "connection" in error_message.lower():
+        raise TimeoutError("데이터베이스 연결 시간이 초과되었습니다")
+    else:
+        raise DatabaseError("데이터베이스 처리 중 오류가 발생했습니다")
+
+
+def handle_glucose_data_error(glucose_data, member_id: int):
+    """혈당 데이터 에러 처리"""
+    if not glucose_data:
+        raise NotFoundError(f"회원 ID {member_id}의 혈당 데이터를 찾을 수 없습니다")
+    
+    # 혈당 데이터 유효성 검증
+    for data in glucose_data:
+        if not hasattr(data, 'glucose_mg_dl') or data.glucose_mg_dl is None:
+            raise DataIntegrityError("혈당 데이터에 유효하지 않은 값이 포함되어 있습니다")
+        
+        if not hasattr(data, 'time') or not data.time:
+            raise DataIntegrityError("혈당 데이터에 시간 정보가 누락되었습니다")
+    
+    return glucose_data
+
+
+def handle_quest_error(quest_id: int, member_id: int, error_message: str = None):
+    """퀘스트 에러 처리"""
+    if not quest_id:
+        raise ValidationError("퀘스트 ID가 필요합니다")
+    
+    if not member_id:
+        raise ValidationError("회원 ID가 필요합니다")
+    
+    if error_message:
+        if "not found" in error_message.lower() or "does not exist" in error_message.lower():
+            raise NotFoundError(f"퀘스트 ID {quest_id}를 찾을 수 없습니다")
+        elif "permission" in error_message.lower() or "unauthorized" in error_message.lower():
+            raise AuthorizationError("이 퀘스트에 대한 권한이 없습니다")
+        else:
+            raise QuestError(f"퀘스트 처리 중 오류가 발생했습니다: {error_message}")
+
+

@@ -35,8 +35,8 @@ class Glucose(Base):
     id = Column(Integer, primary_key=True, index=True)
     member_id = Column(Integer, nullable=False, index=True)
     glucose_mg_dl = Column(Float, nullable=False)
-    time = Column(String(10), nullable=False)
-    date = Column(Date, nullable=False, index=True)
+    time = Column(String(8), nullable=False)  # varchar(8) in database
+    date = Column(String(10), nullable=False, index=True)  # varchar(10) in database
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -55,8 +55,8 @@ class Food(Base):
     fiber = Column(Float)
     sugar = Column(Float)
     meal_type = Column(String(20))  # breakfast, lunch, dinner, snack
-    date = Column(Date, nullable=False, index=True)
-    time = Column(String(10), nullable=False)
+    date = Column(String(10), nullable=False, index=True)  # varchar(10) in database
+    time = Column(String(8), nullable=False)  # varchar(8) in database
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -71,8 +71,8 @@ class Exercise(Base):
     duration_minutes = Column(Integer)
     intensity = Column(String(20))  # low, medium, high
     calories_burned = Column(Float)
-    date = Column(Date, nullable=False, index=True)
-    time = Column(String(10), nullable=False)
+    date = Column(String(10), nullable=False, index=True)  # varchar(10) in database
+    time = Column(String(8), nullable=False)  # varchar(8) in database
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -86,9 +86,9 @@ class Quest(Base):
     quest_type = Column(String(50), nullable=False)
     quest_title = Column(String(200), nullable=False)
     quest_content = Column(Text)
-    quest_date = Column(Date, nullable=False, index=True)
+    quest_date = Column(String(10), nullable=False, index=True)  # varchar(10) in database
     is_completed = Column(Boolean, default=False)
-    approval_status = Column(String(50), default="pending")  # pending, approved, rejected
+    approval_status = Column(String(20), default="pending")  # pending, approved, rejected
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
