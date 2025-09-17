@@ -31,6 +31,11 @@ public class ExerciseService {
 
         return ExerciseResponseDTO.ExerciseSaveDTO.builder()
                 .exerciseId(saved.getId())
+                .title(saved.getTitle())
+                .date(saved.getDate())
+                .startTime(saved.getStartTime())
+                .exerciseTime(saved.getExerciseTime())
+                .exerciseType(saved.getExerciseType())
                 .build();
     }
 }
