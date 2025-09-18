@@ -24,7 +24,6 @@ AI-Service/.DS_Store
 AI-Service/*.db
 AI-Service/*.sqlite*
 AI-Service/*.bin
-AI-Service/app/embedding_data/README.md
 
 
 

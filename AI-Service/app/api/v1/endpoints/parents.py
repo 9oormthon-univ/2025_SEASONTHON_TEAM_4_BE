@@ -71,7 +71,7 @@ def parent_report_api():
         
         # LLM 결과가 없으면 기본 템플릿 사용
         if not summary_text:
-            from app.utils.ai_utils import get_default_parent_summary
+            from app.utils.business.ai_utils import get_default_parent_summary
             summary_text = get_default_parent_summary(summary)
         
         return safe_json_response({
@@ -140,7 +140,7 @@ def parent_analyze_api():
         
         # LLM 결과가 없으면 기본 템플릿 사용
         if not analysis_text:
-            from app.utils.ai_utils import get_default_parent_analysis
+            from app.utils.business.ai_utils import get_default_parent_analysis
             analysis_text = get_default_parent_analysis(summary)
         
         return safe_json_response({
@@ -176,9 +176,11 @@ def parent_approve_api():
         data = request.get_json()
         quest_id = data.get("quest_id")
         approval_status = data.get("approval_status", "승인")  # "승인" 또는 "거부"
-        
-        # JWT에서 member_id 가져오기
+
+        # JWT에서 member_id와 code 가져오기
         member_id = g.member_id
+        member_info = g.member_info
+        code = member_info.get('code')  # member 테이블의 code 정보로 해당 아이의 부모 인증
         
         # 유효성 검증
         if not quest_id:
@@ -221,58 +223,17 @@ def parent_approve_api():
         return safe_json_response(get_user_friendly_error("INTERNAL_SERVER_ERROR", str(e)), 500)
 
 
+
 @parents_bp.route("/hint", methods=["GET"])
-@jwt_auth_code
-@log_request_info
-def parent_hint_api():
-    """부모를 위한 오늘의 돌봄 힌트 제공 API (오늘 하루 혈당 데이터 기반)"""
-    try:
-        # JWT에서 member_id 가져오기
-        member_id = g.member_id
-        member_info = g.member_info
-        
-        # 오늘 날짜 설정
-        from datetime import datetime
-        today = datetime.now().strftime("%Y-%m-%d")
-        
-        # 오늘의 혈당 데이터 조회
-        glucose_data = get_glucose_data(member_id, today)
-        
-        # 혈당 데이터 유효성 검증
-        handle_glucose_data_error(glucose_data, member_id)
-        
-        # 오늘의 구체적인 돌봄 힌트 생성
-        care_hints = generate_daily_care_hints(glucose_data, member_info, today)
-        
-        return safe_json_response({
-            "care_hints": care_hints
-        })
-        
-    except ValidationError as e:
-        return safe_json_response(get_user_friendly_error("VALIDATION_ERROR", str(e)), 400)
-    except NotFoundError as e:
-        return safe_json_response(get_user_friendly_error("NOT_FOUND", str(e)), 404)
-    except DatabaseError as e:
-        return safe_json_response(get_user_friendly_error("DATABASE_ERROR", str(e)), 500)
-    except DataIntegrityError as e:
-        return safe_json_response(get_user_friendly_error("GLUCOSE_DATA_ERROR", str(e)), 422)
-    except TimeoutError as e:
-        return safe_json_response(get_user_friendly_error("TIMEOUT_ERROR", str(e)), 408)
-    except ServiceUnavailableError as e:
-        return safe_json_response(get_user_friendly_error("SERVICE_UNAVAILABLE", str(e)), 503)
-    except Exception as e:
-        return safe_json_response(get_user_friendly_error("INTERNAL_SERVER_ERROR", str(e)), 500)
-
-
-@parents_bp.route("/daily-hint", methods=["GET"])
 @jwt_auth_code
 @log_request_info
 def parent_daily_hint_api():
     """오늘의 돌봄 힌트 제공 API (오늘 하루 혈당 데이터 기반)"""
     try:
-        # JWT에서 member_id 가져오기
+        # JWT에서 member_id와 code 가져오기
         member_id = g.member_id
         member_info = g.member_info
+        code = member_info.get('code')  # 부모의 code 정보
         
         date = request.args.get("date")  # YYYY-MM-DD 형식
         
@@ -829,9 +790,10 @@ def generate_encouragement_message(summary):
 def parent_glucose_analysis_api():
     """일일 혈당 변화 종합 분석 API (음식 + 운동 + 혈당 통합 분석)"""
     try:
-        # JWT에서 member_id 가져오기
+        # JWT에서 member_id와 code 가져오기
         member_id = g.member_id
         member_info = g.member_info
+        code = member_info.get('code')  # 부모의 code 정보
         
         # 날짜는 항상 오늘로 설정
         from datetime import datetime
