@@ -26,7 +26,7 @@ public class MemberSignDTO {
         String password;
 
         @NotBlank
-        @Size(max = 10)
+        @Size(max = 10, message = "이름은 10자 이내여야 합니다.")
         String username;
 
         @NotNull
@@ -52,7 +52,14 @@ public class MemberSignDTO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class LoginDTO {
+        @NotBlank
+        @Email(message = "유효한 이메일 주소를 입력해주세요.")
         String email;
+
+        @NotBlank
+        @Size(min = 8, max = 16, message = "비밀번호는 8자 이상 16자 이내여야 합니다.")
+        @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]).*$",
+                message = "비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.")
         String password;
     }
 
@@ -60,7 +67,11 @@ public class MemberSignDTO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class ParentLoginDTO {
+        @NotBlank
         String code;
+
+        @NotBlank
+        @Size(max = 10, message = "이름은 10자 이내여야 합니다.")
         String name;
     }
 }

@@ -68,7 +68,7 @@ public class MemberController {
     @Operation(summary = "마이페이지 조회 api")
     @GetMapping("/my-page")
     public ApiResponse<MemberResponseDTO.MyPageResponseDTO> myPage(@AuthUser Member member){
-        return ApiResponse.onSuccess(memberService.getMemberprofile(member));
+        return ApiResponse.onSuccess(memberService.getMemberProfile(member));
     }
 
     @Operation(summary = "이름, 생년월일, 성별, 키, 몸무게 바꾸기")
