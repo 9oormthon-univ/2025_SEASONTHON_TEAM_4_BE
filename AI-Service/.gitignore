@@ -187,11 +187,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Docker
-.dockerignore
-Dockerfile
-docker-compose.yml
-docker-compose.override.yml
+
+
 
 # Kubernetes
 *.yaml
