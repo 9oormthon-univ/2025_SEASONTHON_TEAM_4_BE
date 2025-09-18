@@ -10,6 +10,7 @@ from .security_logger import log_security_event
 from app.core.config import settings
 from typing import Optional, Dict, Any, Callable
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,8 @@ _token_cache: Dict[str, Dict[str, Any]] = {}
 
 def get_jwt_secret():
     """JWT 시크릿 키를 가져옵니다."""
-    return settings.JWT_SECRET_KEY
+
+    return os.environ.get("JWT_SECRET_KEY")
 
 def decode_jwt_token(token: str) -> Dict[str, Any]:
     """JWT 토큰을 디코딩합니다."""
