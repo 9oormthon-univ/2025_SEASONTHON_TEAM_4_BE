@@ -66,8 +66,6 @@ Spring-Service/danjjang/gradlew.bat
 # ------------------
 *.env
 docker-compose.yml
-AI-Service/Dockerfile
-Spring-Service/danjjang/Dockerfile
 
 # ------------------
 # IDE and Editor
