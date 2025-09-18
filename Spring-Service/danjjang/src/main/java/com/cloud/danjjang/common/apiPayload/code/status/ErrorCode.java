@@ -43,6 +43,10 @@ public enum ErrorCode implements BaseErrorCode {
     MISSING_AUTHOR_TOKEN(HttpStatus.UNAUTHORIZED, "4014", "권한 정보가 없는 토큰입니다"),
     TOKEN_CREATION_FAILED(HttpStatus.UNAUTHORIZED, "4015", "토큰 생성에 실패했습니다."),
     TOKEN_SAVE_FAILED(HttpStatus.UNAUTHORIZED, "4016", "토큰 저장에 실패했습니다."),
+
+    //운동 관련 응답
+    EXERCISE_NOT_FOUND(HttpStatus.BAD_REQUEST, "EXERCISE_6000", "운동 기록을 찾을 수 없습니다."),
+    INVALID_EXERCISE_TIME(HttpStatus.BAD_REQUEST, "EXERCISE_6001", "운동 시간이 존재하지 않습니다.")
     ;
 
 

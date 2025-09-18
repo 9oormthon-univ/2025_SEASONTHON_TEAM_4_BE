@@ -18,7 +18,7 @@ public class MemberRequestDTO {
     public static class MemberProfileDTO {
 
         @NotBlank
-        @Size(max = 10)
+        @Size(max = 10, message = "이름은 10자 이내여야 합니다.")
         String username;
 
         @NotNull

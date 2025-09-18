@@ -16,12 +16,12 @@ import com.cloud.danjjang.domain.member.repository.RefreshRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Locale;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 
@@ -40,11 +40,20 @@ public class MemberService {
         if (memberRepository.existsByEmail(requestDto.getEmail())) {
             throw new GeneralHandler(ErrorCode.ID_ALREADY_EXIST);
         }
-        final String code = CodeGenerator.next(10);
+        String code;
+        int tries = 0;
+        do {
+            code = CodeGenerator.next(10);
+            tries++;
+            if (tries > 5) {
+                throw new GeneralHandler(ErrorCode.OUTPUT_ERROR);
+            }
+        } while (memberRepository.existsByCode(code));
 
         Member newMember = MemberMapper.toLoginEmailMember(requestDto.getEmail(), passwordEncoder.encode(requestDto.getPassword()), requestDto.getUsername(), requestDto.getBirth(), requestDto.getWeight(), requestDto.getHeight(),
                 requestDto.getGender(), requestDto.getDiabetesType(), requestDto.getSensor(), code);
         Member savedMember = memberRepository.save(newMember);
+        log.info("[member] signup success memberId={}", savedMember.getId());
 
         return RefreshTokenDTO.builder()
                 .memberId(savedMember.getId())
@@ -73,15 +82,20 @@ public class MemberService {
     @Transactional(readOnly = true)
     public TokenDTO parentLoginByCode(String code, HttpServletResponse response) {
         Member member = memberRepository.findByCode(code)
-                .orElseThrow(() -> new GeneralHandler(ErrorCode.MEMBER_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.warn("[parent-view] login failed: member not found by code");
+                    return new GeneralHandler(ErrorCode.MEMBER_NOT_FOUND);
+                });
 
         TokenDTO tokenDTO = tokenProvider.generateParentViewToken(member.getEmail(), member.getId());
         response.addHeader("Authorization", tokenDTO.getAccessToken());
         response.addHeader("X-Member-Id", String.valueOf(member.getId()));
+        log.info("[parent-view] login success memberId={}", member.getId());
         return tokenDTO;
     }
 
-    public MemberResponseDTO.MyPageResponseDTO getMemberprofile(Member member) {
+    public MemberResponseDTO.MyPageResponseDTO getMemberProfile(Member member) {
+        log.info("[member] profile fetch memberId={}", member.getId());
         return MemberResponseDTO.MyPageResponseDTO.builder()
                 .username(member.getUsername())
                 .height(member.getHeight())
@@ -98,6 +112,7 @@ public class MemberService {
                 memberProfileDTO.getHeight(),
                 memberProfileDTO.getWeight());
         memberRepository.save(member);
+        log.info("[member] profile updated memberId={}", member.getId());
 
         return MemberResponseDTO.MemberSettingDTO.builder()
                 .memberId(member.getId())
@@ -107,6 +122,7 @@ public class MemberService {
     public MemberResponseDTO.MemberSettingDTO sensorSetting(Member member, MemberRequestDTO.MemberSensorDTO memberSensorDTO) {
         member.setSensor(memberSensorDTO.getSensor());
         memberRepository.save(member);
+        log.info("[member] sensor updated memberId={} sensor={}", member.getId(), member.getSensor());
 
         return MemberResponseDTO.MemberSettingDTO.builder()
                 .memberId(member.getId())
@@ -116,6 +132,7 @@ public class MemberService {
     public MemberResponseDTO.MemberSettingDTO passwordSetting(Member member, MemberRequestDTO.MemberPasswordDTO memberPasswordDTO) {
         member.setPassword(passwordEncoder.encode(memberPasswordDTO.getPassword()));
         memberRepository.save(member);
+        log.warn("[member] password changed memberId={}", member.getId());
 
         return MemberResponseDTO.MemberSettingDTO.builder()
                 .memberId(member.getId())
