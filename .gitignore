@@ -47,6 +47,8 @@ Spring-Service/*.log
 Spring-Service/.idea/
 Spring-Service/*.h2.db
 Spring-Service/*.properties
+Spring-Service/.gradle/
+Spring-Service/gradle/wrapper/gradle-wrapper.jar
 
 Spring-Service/danjjang/gradlew
 Spring-Service/danjjang/gradlew.bat
@@ -63,3 +65,26 @@ Spring-Service/danjjang/gradlew.bat
 # Docker
 # ------------------
 *.env
+docker-compose.yml
+AI-Service/Dockerfile
+Spring-Service/danjjang/Dockerfile
+
+# ------------------
+# IDE and Editor
+# ------------------
+.vscode/
+*.swp
+*.swo
+*~
+
+# ------------------
+# OS generated files
+# ------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+

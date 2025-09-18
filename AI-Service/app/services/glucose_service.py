@@ -74,7 +74,7 @@ def analyze_glucose(metrics, prompt_text, user_age=None, member_id=None, use_rag
     formatted_prompt = formatted_prompt.replace("(n)회", "5회")  # 심호흡 횟수
     formatted_prompt = formatted_prompt.replace("(n)", str(int(avg_glucose)))  # 마지막에 단일 (n) 치환
     
-    # 반말 + 다정한 말투로 통일 (나이 검증 없음)
+    # 반말 + 다정한 말투로 프롬포트로 한 번 더 톤앤 매너 강조
     tone_instruction = """
 
 매우 중요: 반말 + 다정한 말투로만 말해주세요!
@@ -92,7 +92,7 @@ def analyze_glucose(metrics, prompt_text, user_age=None, member_id=None, use_rag
 
 주의: 존댓말을 사용하면 안 됩니다! 반말 + 다정한 말투로만 작성하세요!"""
     
-    # 반말 + 다정한 말투 강제 변환
+    # 반말 + 다정한 말투 강제 변환 프롬포트로 한 번 더 톤앤 매너 강조
     final_instruction = """
 
 최종 지시사항
